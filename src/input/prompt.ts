@@ -1,3 +1,4 @@
+import { updateCaret } from './caret.js';
 import { createInputHistory } from './history.js';
 
 export interface PromptController {
@@ -21,6 +22,7 @@ export function createPrompt(document: Document, label: string, onSubmit: (text:
   mirror.setAttribute('aria-hidden', 'true');
   const caret = document.createElement('span');
   caret.className = 'lk-caret';
+  caret.setAttribute('aria-hidden', 'true');
   const input = document.createElement('textarea');
   input.className = 'lk-input';
   input.setAttribute('aria-label', '输入内容');
@@ -32,19 +34,9 @@ export function createPrompt(document: Document, label: string, onSubmit: (text:
   // 输入法组合期间的回车交给浏览器确认候选词。
   let composing = false;
 
-  // 从完整文本镜像测量光标坐标，保持与原生输入相同的换行规则。
+  // 同步完整文本镜像及按字符测量的块状光标。
   function render(): void {
-    const text = document.createTextNode(`${input.value}\u200b`);
-    mirror.replaceChildren(text);
-    const range = document.createRange();
-    const position = input.selectionEnd;
-    range.setStart(text, position);
-    range.setEnd(text, Math.min(text.length, position + 1));
-    if (typeof range.getBoundingClientRect !== 'function') return;
-    const rectangle = range.getBoundingClientRect();
-    const bounds = mirror.getBoundingClientRect();
-    caret.style.left = `${rectangle.left - bounds.left}px`;
-    caret.style.top = `${rectangle.top - bounds.top}px`;
+    updateCaret(input, mirror, caret);
   }
 
   const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(render);

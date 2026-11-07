@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "dev": "vite --config tooling/vite.example.ts",
+    "generate:fonts": "node tooling/generate-fonts.mjs",
     "build": "npm run build:lib && npm run build:example",
     "build:lib": "vite build --config tooling/vite.library.ts && tsc --project tsconfig.build.json",
     "build:example": "vite build --config tooling/vite.example.ts",
@@ -37,7 +38,9 @@
     "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "dependencies": {
-    "@fontsource/kode-mono": "^5.3.0"
+    "@fontsource/kode-mono": "^5.3.0",
+    "@fontsource/noto-sans-sc": "^5.3.1",
+    "@fontsource/noto-sans-symbols-2": "^5.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

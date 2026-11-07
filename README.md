@@ -2,6 +2,8 @@
 
 输入驱动的轻量浏览器终端套件。第一阶段提供白底黑字、Kode Mono Medium、流式文本、输入历史与原样回显 example。
 
+默认提示符为 `❯`，闪烁块状光标高度等于字号，在文本行内垂直居中：文本中覆盖右侧完整字素的实际宽度，区分全角与半角；空输入、换行和文本末尾使用半角宽。覆盖文字以反色显示，选择文本时隐藏光标。
+
 ## 本地运行
 
 使用 Node.js 24 LTS（也支持 22.13+ 的 22 LTS）。
@@ -30,7 +32,7 @@ function echo(text: string): void {
 const terminal = createTerminal({ element, banner: 'LunarKit', onSubmit: echo });
 ```
 
-`element` 为必填挂载元素；`banner` 可选；`prompt` 默认 `>`；`onSubmit` 接收未经裁剪或命令解析的字符串。提交后先记录原始输入，再调用回调，example 中回调将同一文本追加为输出。
+`element` 为必填挂载元素；`banner` 可选；`prompt` 默认 `❯`；`onSubmit` 接收未经裁剪或命令解析的字符串。提交后先记录原始输入，再调用回调，example 中回调将同一文本追加为输出。
 
 默认内容区最大宽度为 1080px，水平居中，内部文字左对齐；两侧内边距随视口在 24px 至 48px 之间调整。通过 `paddingInline` 和 `maxWidth` 可覆盖布局，数值单位为 px，也接受 CSS 长度字符串：
 
@@ -46,7 +48,7 @@ const terminal = createTerminal({
 
 返回的 `write(text)` 追加安全文本，`focus()` 聚焦输入行，`destroy()` 移除实例 DOM 与监听器。页面卸载或组件销毁时调用 `destroy()`；销毁后再次调用这些方法安全。多个挂载元素可以拥有独立实例。
 
-example 位于 `example/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，example 制品位于 `dist/example/`。库样式内置字体数据，消费时无需请求第三方字体服务。Kode Mono 字体的 SIL OFL 1.1 许可证随包附于 `THIRD_PARTY_LICENSES/Kode-Mono.txt`；中文字符使用系统字体回退。
+example 位于 `example/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，example 制品位于 `dist/example/`。库样式内置字体数据，消费时无需请求第三方字体服务。库同时打包 Noto Sans SC Medium 中文字体和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线，减少不同系统的视觉差异；字体覆盖范围以外的字符（如部分 emoji）仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。字体按 Unicode 范围分片加载，库样式内嵌全部字体，打包体积随中文字体增加；`npm run generate:fonts` 可从依赖重新生成无注释的字体声明。
 
 ## 目录
 

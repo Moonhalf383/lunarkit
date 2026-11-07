@@ -34,13 +34,13 @@ async function initialAppearance({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('textbox', { name: '输入内容' })).toBeFocused();
   await expect(page.getByRole('heading', { name: 'LunarKit' })).toBeVisible();
-  await expect(page.locator('.lk-terminal')).toHaveText('LunarKit>\u200b');
+  await expect(page.locator('.lk-terminal')).toHaveText('LunarKit❯\u200b');
   await expect(page.locator('.lk-terminal > *')).toHaveCount(3);
   await page.screenshot({ path: 'test-results/echo-desktop.png' });
   expect(await inspectTheme(page)).toEqual({
     background: 'rgb(255, 255, 255)',
     color: 'rgb(0, 0, 0)',
-    font: '"Kode Mono", monospace',
+    font: '"Kode Mono", "LunarKit Prompt", "Noto Sans SC", monospace',
     weight: '500',
     fontLoaded: true,
     bannerSize: expect.any(Number),
@@ -166,7 +166,11 @@ async function caretWrapping({ page }: { page: Page }): Promise<void> {
     range.setEnd(mirror.firstChild!, input.selectionEnd + 1);
     const expected = range.getBoundingClientRect();
     const actual = caret.getBoundingClientRect();
-    return { difference: Math.abs(expected.top - actual.top) + Math.abs(expected.left - actual.left), children: mirror.childNodes.length };
+    const lineHeight = parseFloat(getComputedStyle(input).lineHeight);
+    const row = Math.round((expected.top - mirror.getBoundingClientRect().top) / lineHeight);
+    const fontSize = parseFloat(getComputedStyle(input).fontSize);
+    const top = mirror.getBoundingClientRect().top + row * lineHeight + (lineHeight - fontSize) / 2;
+    return { difference: Math.round(Math.abs(top - actual.top) + Math.abs(expected.left - actual.left)), children: mirror.childNodes.length };
   }
   await expect.poll(readCaret).toEqual({ difference: 0, children: 1 });
   // 在浏览器端测量当前光标以等待选择事件完成。

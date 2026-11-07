@@ -3,7 +3,7 @@ import type { Terminal, TerminalOptions } from './types.js';
 
 // 在指定元素中创建独立的流式浏览器终端。
 export function createTerminal(options: TerminalOptions): Terminal {
-  const { element, banner, prompt = '>', onSubmit } = options;
+  const { element, banner, prompt = '❯', onSubmit } = options;
   const document = element.ownerDocument;
   const root = document.createElement('section');
   root.className = 'lk-terminal';

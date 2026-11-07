@@ -1,4 +1,4 @@
-@import '@fontsource/kode-mono/500.css';
+@import './fonts.css';
 
 .lk-terminal {
   box-sizing: border-box;
@@ -10,7 +10,7 @@
   padding-inline: clamp(24px, 4vw, 48px);
   background: #fff;
   color: #000;
-  font-family: 'Kode Mono', monospace;
+  font-family: 'Kode Mono', 'LunarKit Prompt', 'Noto Sans SC', monospace;
   font-size: 16px;
   font-weight: 500;
   line-height: 1.6;
@@ -45,6 +45,8 @@
 
 .lk-editor {
   position: relative;
+  isolation: isolate;
+  background: #fff;
   flex: 1;
   min-width: 0;
 }
@@ -90,18 +92,12 @@
 
 .lk-caret {
   position: absolute;
-  width: 2px;
+  width: 1ch;
   height: 1em;
+  background: #fff;
+  mix-blend-mode: difference;
   visibility: hidden;
   pointer-events: none;
-}
-
-.lk-caret::after {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 2px;
-  background: #000;
-  content: '';
 }
 
 .lk-editor:focus-within .lk-caret {
