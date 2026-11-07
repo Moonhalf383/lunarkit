@@ -5,7 +5,8 @@
 # browser_terminal
 > development_rules
 LunarKit 第一阶段的浏览器终端实体。
-- 公开 createTerminal({ element, banner?, prompt?, onSubmit? })，返回 write(text)、focus()、destroy()；输入文本、回调参数和输出文本使用 string 类型。
+- 公开 createTerminal({ element, banner?, prompt?, paddingInline?, maxWidth?, onSubmit? })，返回 write(text)、focus()、destroy()；输入文本、回调参数和输出文本使用 string 类型。
+- paddingInline 与 maxWidth 接受像素数值或 CSS 长度字符串，分别设置内容区两侧内边距和最大宽度。
 - 通过单一垂直流依次展示 banner、已提交输入和输出，输入行位于当前流的末尾；内容增长时页面允许滚动。
 - 输入行默认提示符为 >，自动聚焦，展示一个闪烁光标；支持键盘编辑、选择、粘贴、中文输入法与回车提交。
 - 输入支持多行粘贴，Enter 提交；组合输入期间的 Enter 用于确认输入法候选，不提交。
@@ -18,6 +19,7 @@ LunarKit 第一阶段的浏览器终端实体。
 第一阶段的默认视觉主题实体。
 - 页面与终端白底黑字，使用本地打包的 Kode Mono Medium 字体，font-weight 为 500。
 - banner 是 LunarKit 的大号文字，宽窄屏均可阅读；正文使用统一等宽字体。
+- 默认内容区水平居中、最大宽度 1080px，两侧内边距随视口在 24px 至 48px 之间变化；banner 和流内文本保持左对齐。
 - 可见元素仅包含 banner、prompt、输入文本、输出文本与闪烁光标；不显示边框、面板、工具栏、状态栏或装饰性图标。
 - 键盘焦点保持可操作，输入具有无障碍名称，输出区域具有日志语义；遵循减少动态效果偏好。
 
