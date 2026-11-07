@@ -102,6 +102,9 @@
 
 .lk-editor:focus-within .lk-caret {
   visibility: visible;
+}
+
+.lk-editor:focus-within .lk-caret-idle {
   animation: lk-blink 1.1s step-end infinite;
 }
 

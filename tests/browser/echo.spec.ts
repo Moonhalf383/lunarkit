@@ -37,6 +37,7 @@ async function initialAppearance({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.lk-terminal')).toHaveText('LunarKit❯\u200b');
   await expect(page.locator('.lk-terminal > *')).toHaveCount(3);
   await page.screenshot({ path: 'test-results/echo-desktop.png' });
+  await expect(page.locator('.lk-caret')).toHaveCSS('animation-name', 'lk-blink');
   expect(await inspectTheme(page)).toEqual({
     background: 'rgb(255, 255, 255)',
     color: 'rgb(0, 0, 0)',

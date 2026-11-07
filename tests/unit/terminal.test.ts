@@ -104,6 +104,25 @@ function layoutOptions(): void {
   expect(second.style.maxWidth).toBe('80rem');
 }
 
+// 验证销毁时释放光标的空闲计时器并保持清理后的状态。
+function disposeIdleTimer(): void {
+  vi.useFakeTimers();
+  try {
+    const terminal = setup();
+    const input = document.querySelector('textarea')!;
+    const caret = document.querySelector('.lk-caret')!;
+    vi.advanceTimersByTime(0);
+    input.dispatchEvent(new Event('input'));
+    expect(vi.getTimerCount()).toBe(1);
+    terminal.destroy();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(1000);
+    expect(caret.classList.contains('lk-caret-idle')).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
 // 组织终端 DOM 和生命周期测试。
 function terminalSuite(): void {
   afterEach(cleanup);
@@ -112,6 +131,7 @@ function terminalSuite(): void {
   it('兼容输入法组合', compositionInput);
   it('实例独立且完整清理', lifecycle);
   it('布局配置支持数值和 CSS 长度', layoutOptions);
+  it('销毁释放光标空闲计时器', disposeIdleTimer);
 }
 
 describe('terminal', terminalSuite);

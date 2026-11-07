@@ -5,7 +5,7 @@
 # first_stage
 > echo_example
 交付 TypeScript 开发环境及第一个纯文本 echo 消费用例。
-当前阶段已实现并通过 npm run check：8 项单元测试、12 项 Chromium 测试、NodeNext 类型消费检查，以及类型、注释规范和构建检查。验收记录见 verification.md。
+当前阶段已实现并通过 npm run check：9 项单元测试、14 项 Chromium 测试、NodeNext 类型消费检查，以及类型、注释规范和构建检查。验收记录见 verification.md。
 - 以 first-example.mf 的浏览器终端、主题和消费用例为本阶段验收范围。
 - start 保留完整套件愿景，其余能力在后续阶段实施。
 
