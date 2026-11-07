@@ -1,0 +1,8 @@
+version = 1
+
+[build]
+default = "main"
+
+[build.main]
+target = "start"
+output = "dist/plan.md"
