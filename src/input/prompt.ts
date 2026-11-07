@@ -1,3 +1,4 @@
+import type { CompletionResult } from '../commands/types.js';
 import { updateCaret } from './caret.js';
 import { createInputHistory } from './history.js';
 
@@ -5,10 +6,19 @@ export interface PromptController {
   element: HTMLDivElement;
   focus: () => void;
   destroy: () => void;
+  clear: () => string;
+}
+
+export interface PromptActions {
+  submit: (text: string) => void;
+  isBusy?: () => boolean;
+  interrupt?: (text: string) => void;
+  complete?: (text: string, cursor: number) => CompletionResult;
+  suggest?: (candidates: readonly string[]) => void;
 }
 
 // 创建支持原生编辑、输入法和历史导航的输入行。
-export function createPrompt(document: Document, label: string, onSubmit: (text: string) => void): PromptController {
+export function createPrompt(document: Document, label: string, actions: PromptActions): PromptController {
   const element = document.createElement('div');
   element.className = 'lk-prompt';
   const prefix = document.createElement('span');
@@ -75,16 +85,48 @@ export function createPrompt(document: Document, label: string, onSubmit: (text:
     render();
   }
 
-  // 处理回车提交和上下历史导航。
+  // 清空草稿与历史浏览状态，并返回取消前的原文。
+  function clear(): string {
+    const text = input.value;
+    history.reset();
+    restore('');
+    markActivity();
+    return text;
+  }
+
+  // 处理命令补全并将歧义候选追加到流中。
+  function complete(): void {
+    try {
+      const result = actions.complete?.(input.value, input.selectionEnd);
+      if (!result) return;
+      input.value = result.text;
+      input.setSelectionRange(result.cursor, result.cursor);
+      render();
+      if (result.candidates.length) actions.suggest?.(result.candidates);
+    } catch {
+      render();
+    }
+  }
+
+  // 处理提交、命令控制与上下历史导航。
   function handleKeydown(event: KeyboardEvent): void {
     markActivity();
     if (composing || event.isComposing || event.keyCode === 229) return;
-    if (event.key === 'Enter') {
+    if (event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'c' && actions.interrupt) {
+      const selection = document.getSelection();
+      if (input.selectionStart !== input.selectionEnd || (selection && !selection.isCollapsed)) return;
       event.preventDefault();
+      actions.interrupt(clear());
+    } else if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && actions.complete) {
+      event.preventDefault();
+      complete();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (actions.isBusy?.()) return;
       const text = input.value;
       history.remember(text);
       restore('');
-      onSubmit(text);
+      actions.submit(text);
     } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
@@ -144,5 +186,5 @@ export function createPrompt(document: Document, label: string, onSubmit: (text:
   editor.append(mirror, input, caret);
   element.append(prefix, editor);
   render();
-  return { element, focus, destroy };
+  return { element, focus, destroy, clear };
 }

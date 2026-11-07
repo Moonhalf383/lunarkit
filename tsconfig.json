@@ -11,10 +11,11 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "types": ["node", "vite/client"],
     "baseUrl": ".",
     "paths": {"lunarkit": ["src/index.ts"]}
   },
-  "include": ["src", "example", "tests", "tooling"]
+  "include": ["src", "example", "example2", "tests", "tooling"]
 }

@@ -23,16 +23,20 @@
   ],
   "scripts": {
     "dev": "vite --config tooling/vite.example.ts",
+    "dev:example2": "vite --config tooling/vite.example2.ts",
+    "preview:example2": "vite preview --config tooling/vite.example2.ts",
     "generate:fonts": "node tooling/generate-fonts.mjs",
-    "build": "npm run build:lib && npm run build:example",
+    "build": "npm run build:lib && npm run build:example && npm run build:example2",
     "build:lib": "vite build --config tooling/vite.library.ts && tsc --project tsconfig.build.json",
     "build:example": "vite build --config tooling/vite.example.ts",
+    "build:example2": "vite build --config tooling/vite.example2.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && node tooling/check-comments.mjs",
     "test": "vitest run --config tooling/vitest.config.ts",
     "test:e2e": "playwright test --config tooling/playwright.config.ts",
+    "test:production": "playwright test --config tooling/playwright.production.ts",
     "test:consumer": "tsc --project tests/consumer/tsconfig.json",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:consumer && npm run test:e2e"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:consumer && npm run test:e2e && npm run test:production"
   },
   "engines": {
     "node": "^22.13.0 || ^24.0.0 || >=26.0.0"

@@ -2,6 +2,7 @@ export interface InputHistory {
   remember: (text: string) => void;
   previous: (draft: string) => string;
   next: (draft: string) => string;
+  reset: () => void;
 }
 
 // 创建独立的输入历史并保留浏览历史前的草稿。
@@ -15,6 +16,11 @@ export function createInputHistory(): InputHistory {
   // 保存每次提交的原文并重置浏览位置。
   function remember(text: string): void {
     entries.push(text);
+    reset();
+  }
+
+  // 放弃历史浏览并恢复新的草稿位置。
+  function reset(): void {
     position = entries.length;
     savedDraft = '';
   }
@@ -34,5 +40,5 @@ export function createInputHistory(): InputHistory {
     return position === entries.length ? savedDraft : (entries[position] ?? draft);
   }
 
-  return { remember, previous, next };
+  return { remember, previous, next, reset };
 }

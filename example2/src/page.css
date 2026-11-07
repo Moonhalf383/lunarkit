@@ -1,0 +1,61 @@
+html,
+body {
+  margin: 0;
+  min-width: 240px;
+  min-height: 100%;
+  background: #fff;
+  color: #000;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+.command-help {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(16px, 3vw, 40px);
+  padding-block: 24px;
+}
+
+.command-help-brand {
+  margin: 0;
+  font-size: clamp(32px, 7vw, 80px);
+  font-weight: 500;
+  line-height: 1.05;
+  text-align: right;
+  letter-spacing: -0.06em;
+}
+
+.command-help-brand span {
+  display: block;
+}
+
+.command-help-details {
+  min-width: 0;
+  border-left: 1px solid #000;
+  padding-left: clamp(16px, 3vw, 40px);
+  overflow-wrap: anywhere;
+}
+
+.command-help-details p {
+  margin: 0 0 1em;
+}
+
+.command-help-details dl {
+  margin: 0;
+}
+
+.command-help-entry {
+  display: flex;
+  gap: 1ch;
+}
+
+.command-help-entry dt {
+  flex: none;
+}
+
+.command-help-entry dd {
+  margin: 0;
+}

@@ -123,6 +123,46 @@ function disposeIdleTimer(): void {
   }
 }
 
+// 验证命令与原始提交模式冲突时给出明确错误。
+function conflictingModes(): void {
+  // 构造相互冲突的终端配置。
+  function createConflict(): void {
+    createTerminal({ element: document.createElement('main'), onSubmit: vi.fn(), commands: {} });
+  }
+  expect(createConflict).toThrow('Choose commands or onSubmit');
+}
+
+// 验证 DOM 原节点挂载及销毁时运行任务的取消隔离。
+async function commandLifecycle(): Promise<void> {
+  let finish!: () => void;
+  let signal!: AbortSignal;
+  // 模拟迟到完成的消费命令。
+  async function run(context: import('../../src/index').CommandContext): Promise<void> {
+    signal = context.signal;
+    // 暂存任务完成入口。
+    function wait(resolve: () => void): void {
+      finish = resolve;
+    }
+    await new Promise<void>(wait);
+    context.write('late');
+  }
+  const element = document.createElement('main');
+  document.body.append(element);
+  const terminal = createTerminal({ element, commands: { wait: { description: '', run } } });
+  instances.push(terminal);
+  const node = document.createElement('section');
+  node.textContent = 'rich output';
+  terminal.write(node);
+  expect(element.querySelector('.lk-output-node')?.firstChild).toBe(node);
+  submit(element.querySelector('textarea')!, 'wait');
+  terminal.destroy();
+  expect(signal.aborted).toBe(true);
+  finish();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(element.childNodes).toHaveLength(0);
+}
+
 // 组织终端 DOM 和生命周期测试。
 function terminalSuite(): void {
   afterEach(cleanup);
@@ -132,6 +172,8 @@ function terminalSuite(): void {
   it('实例独立且完整清理', lifecycle);
   it('布局配置支持数值和 CSS 长度', layoutOptions);
   it('销毁释放光标空闲计时器', disposeIdleTimer);
+  it('检测冲突消费模式', conflictingModes);
+  it('挂载原始节点并在销毁时取消命令', commandLifecycle);
 }
 
 describe('terminal', terminalSuite);

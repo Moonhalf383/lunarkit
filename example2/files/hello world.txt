@@ -1,0 +1,3 @@
+你好，LunarKit 🙂
+  Spaces and line breaks are preserved.
+<script>This is plain text, not executable HTML.</script>

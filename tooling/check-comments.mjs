@@ -70,7 +70,7 @@ function checkDirectory(directory) {
   }
 }
 
-for (const directory of ['src', 'example', 'tests', 'tooling']) checkDirectory(directory);
+for (const directory of ['src', 'example', 'example2/src', 'tests', 'tooling']) checkDirectory(directory);
 checkScript('eslint.config.js', readFileSync('eslint.config.js', 'utf8'));
 if (failures > 0) process.exitCode = 1;
 else console.log('中文注释规范检查通过');
