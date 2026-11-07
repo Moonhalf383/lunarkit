@@ -39,3 +39,5 @@ LunarKit 第一阶段的浏览器终端实体。
 ---
 
 > echo_example
+> browser_terminal
+> monochrome_theme

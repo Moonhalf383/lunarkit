@@ -1,4 +1,5 @@
 > crate::first-example::echo_example
+> crate::second-example::command_example
 
 ---
 
@@ -9,8 +10,14 @@
 - 以 first-example.mf 的浏览器终端、主题和消费用例为本阶段验收范围。
 - start 保留完整套件愿景，其余能力在后续阶段实施。
 
-# start
+# second_stage
 > first_stage
+> command_example
+交付命令终端接口与挂载文本文件的第二个消费用例。
+- 以 second-example.mf 的命令、补全、文件集和用例为验收范围。
+
+# start
+> second_stage
 这是一个前端开发套件的完整愿景，覆盖多个交付阶段。
 - 极简信息架构：单流式（Stream-based）视图，所有交互结果沿垂直时间线追加，杜绝多级弹窗、抽屉和嵌套卡片。
 - 输入驱动核心：提供固定或悬浮的统一输入行（Prompt），自带自动聚焦、光标闪烁与回车提交事件。
@@ -26,3 +33,4 @@
 
 > start
 > first_stage
+> second_stage

@@ -1,0 +1,48 @@
+> crate::first-example::browser_terminal
+> crate::first-example::monochrome_theme
+
+---
+
+# command_terminal
+> browser_terminal
+声明式命令终端实体，在基础终端上增加命令解析、输出与取消生命周期。
+- commands 配置以命令名映射到 description、run、可选 complete；run 接收 args、signal 和 write，支持同步及异步操作。commands 与 onSubmit 是两种消费模式，配置冲突时给出错误。
+- 基础 write 支持字符串或调用者创建的 HTMLElement；字符串安全呈现，DOM 节点以原节点挂载，调用者负责节点内部事件与销毁。
+- 参数支持空白分隔、单引号、双引号和反斜线转义；空行返回输入态，未知命令、参数错误及执行异常以可读文本输出。
+- 命令按单任务执行，运行时 Enter 保留当前草稿，Ctrl+C 与编辑保持可用；通过 AbortSignal 通知取消，取消后立即释放输入状态，并过滤该次命令的迟到输出与异常。
+- 输入框聚焦且选择折叠时 Ctrl+C 清空草稿、中断运行、打印当前输入及 ^C；取消草稿与提交历史分别管理，有选区时保留系统复制行为。
+- destroy 取消当前命令并释放输入监听和计时器；异步回调在实例存活且命令有效时更新终端。
+
+# command_completion
+> command_terminal
+在命令终端中执行可预测的 Tab 补全操作。
+- Tab 在光标位置补全命令名，参数位置调用对应命令的同步 complete；候选是当前参数的完整替换值。
+- 单候选完整插入，多候选先扩展公共前缀，仍歧义时在流中打印候选；候选排序且去重。
+- 补全保留光标后的内容，支持带空格与引号的文件名并进行安全引用；空候选保留输入。
+- 命令模式下 Tab 执行补全，Shift+Tab 提供离开输入框的键盘路径；组合输入期间交由输入法处理。
+- 上下箭头沿用原始提交历史和草稿恢复，所有输入操作保持既有光标空闲闪烁行为。
+
+# mounted_text_files
+> command_terminal
+浏览器中可只读访问的挂载文本文件集。
+- 公开 createTextFiles，以相对路径到字符串或异步文本加载函数的映射创建文件集；提供 list(directory?)、read(path, signal?) 与 complete(prefix)。
+- 路径限定在挂载根目录；支持嵌套相对路径，对绝对路径和越界路径报告错误，文件内容原样读取。
+- list 返回指定目录直属文件及带 / 后缀的目录名，按名称排序；read 对缺失文件和目录给出可读错误。
+- 补全支持相对文件路径与目录前缀；读取支持 AbortSignal，取消后消费端可立即恢复输入。
+- example2/files/ 中的 txt、md、json 文本由 Vite glob 在开发与构建时挂载，嵌套目录保留相对路径，部署时读取构建产物。
+
+# command_example
+> command_completion
+> mounted_text_files
+> monochrome_theme
+example2 通过公开 API 展示 help、ls、cat 命令及文件补全。
+- 初始状态仅显示 prompt 和光标，保持白底黑字及默认居中布局；example/ 的原样 echo 用例继续可用。
+- help 打印双栏内容：左栏大字 Lunar 和 Kit 分两行、右对齐；中间细竖线；右栏正常字号先显示英文套件描述，再每行显示命令名、冒号及英文注解。
+- help 与 ls 仅接受零个参数；ls 列出挂载根目录直属条目，cat 接受一个相对文件名并打印原始内容。
+- 示例包含普通文本、中文、空文件、带空格文件名与嵌套目录，可通过命令读取；文本中的 HTML 保持字面量。
+- 窄屏保持双栏布局和竖线，调整左栏字号与间距，页面无横向溢出。
+- npm run dev:example2 启动第二用例，npm run build 同时生成两个用例；浏览器测试覆盖首次渲染、help 布局、ls、cat、补全、历史与 Ctrl+C，单元测试验证解析、文件集和异步取消边界。
+
+---
+
+> command_example
