@@ -1,0 +1,12 @@
+html,
+body {
+  margin: 0;
+  min-width: 240px;
+  min-height: 100%;
+  background: #fff;
+  color: #000;
+}
+
+#app {
+  min-height: 100dvh;
+}

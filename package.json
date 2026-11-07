@@ -1,0 +1,56 @@
+{
+  "name": "lunarkit",
+  "version": "0.1.0",
+  "description": "A minimal, input-driven browser terminal kit.",
+  "type": "module",
+  "files": [
+    "dist/index.js",
+    "dist/**/*.d.ts",
+    "dist/style.css",
+    "THIRD_PARTY_LICENSES"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "dev": "vite --config tooling/vite.example.ts",
+    "build": "npm run build:lib && npm run build:example",
+    "build:lib": "vite build --config tooling/vite.library.ts && tsc --project tsconfig.build.json",
+    "build:example": "vite build --config tooling/vite.example.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && node tooling/check-comments.mjs",
+    "test": "vitest run --config tooling/vitest.config.ts",
+    "test:e2e": "playwright test --config tooling/playwright.config.ts",
+    "test:consumer": "tsc --project tests/consumer/tsconfig.json",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:consumer && npm run test:e2e"
+  },
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
+  },
+  "dependencies": {
+    "@fontsource/kode-mono": "^5.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.10.0",
+    "eslint": "^10.14.0",
+    "jsdom": "^27.0.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  }
+}
