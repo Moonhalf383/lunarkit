@@ -14,6 +14,7 @@
 > first_stage
 > command_example
 交付命令终端接口与挂载文本文件的第二个消费用例。
+已通过 npm run check：17 项单元测试、18 项开发页 Chromium 测试、2 项生产产物测试及 NodeNext 类型消费检查。验收记录见 verification.md。
 - 以 second-example.mf 的命令、补全、文件集和用例为验收范围。
 
 # start

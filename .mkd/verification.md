@@ -33,8 +33,23 @@
 - 新增浏览器虚拟时钟测试覆盖连续移动、输入、历史切换、组合输入、失焦及重新聚焦、减少动态效果；新增单元测试验证销毁后计时器释放。
 - `npm run check` 全部通过：9 项单元测试、14 项 Chromium 测试以及类型、注释规范、构建和 NodeNext 消费检查。
 
+## 第二阶段验收
+
+- `second-example.mf` 新增命令终端、Tab 补全、只读挂载文件集及 example2 的验收边界。
+- `createTerminal` 新增 commands 模式、DOM 原节点输出和 interrupt；`CommandContext` 提供 args、AbortSignal 与有取消隔离的 write。
+- `createTextFiles` 提供相对路径文件集的 list、read、complete，支持惰性文本加载和取消；校验挂载边界、重复路径及文件目录冲突。
+- example2 初始只显示输入行，help 输出 Lunar / Kit 右对齐大字、细竖线与英文介绍及命令注解；ls 列出挂载根目录，cat 读取一个相对文件名。
+- example2/files/ 中包含普通文本、中文、空文件、空格文件名与嵌套目录；通过 Vite glob 在开发和静态构建后惰性读取。
+- Tab 支持命令、文件路径、引号参数、公共前缀及歧义列表；Ctrl+C 中断任务或取消草稿，选区保持复制能力，上下历史保留原始输入。
+- `npm run check` 全部通过：17 项单元测试、18 项开发页 Chromium 测试、2 项生产产物 Chromium 测试，以及类型、ESLint、中文注释规范、库和两个用例构建、NodeNext 消费检查。
+- 新增运行态单元测试验证串行执行、取消信号、迟到结果隔离；终端测试验证 DOM 原节点输出、销毁取消及消费模式冲突。
+- 开发与生产浏览器测试均挂起文本模块请求，验证 Ctrl+C 后新命令正常执行及迟到文件结果被过滤。
+- 独立审查指出的公共前缀按 UTF-16 截断问题已改为按完整字素计算，并补充两个 emoji 候选的回归测试。
+- 已查看 example2 help 的桌面与 320px 窄屏截图，保持两列和竖线且无横向溢出；截图位于本地 test-results/。
+- `npm audit` 为 0 vulnerabilities；`npm pack --dry-run` 包含新增公开声明与库代码，排除两个 example 的构建产物。
+
 ## 审查及边界
 
 独立审查指出的换行光标插入断点与 NodeNext 声明扩展名问题已经修正，并补充对应测试。中文输入法边界通过合成组合事件验证；各操作系统真实候选窗口体验仍可手动复核。当前自动化浏览器覆盖 Chromium。
 
-完整套件的组件插槽、命令映射、Context、Tab 补全与内置命令属于后续阶段；`start` 保留其完整愿景。
+命令映射、Tab 补全、DOM 输出节点以及消费端的 help/ls/cat 已由第二阶段交付。Context 和更丰富的组件生命周期等能力留待后续阶段，`start` 保留完整愿景。
