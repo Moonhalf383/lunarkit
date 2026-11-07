@@ -1,0 +1,59 @@
+> crate::second-example::command_terminal
+> crate::second-example::command_completion
+> crate::first-example::monochrome_theme
+
+---
+
+# interactive_commands
+> command_terminal
+> command_completion
+支持连续提问及流内交互面板的命令终端。
+- CommandContext 增加 read({ prompt, secret? })、present(panel)、setPrompt(text)，可等待用户回答或流内面板关闭；提示符可在会话切换后更新，历史记录保留提交时的提示符。
+- read 使用同一个输入行完成交互提问；普通回答作为文本记录，secret 回答输入时保持空白及固定光标位置，答案仅传给处理器，输出、历史和镜像节点保持脱敏。
+- present 在流中挂载带关闭 Promise、focus 与 dispose 的面板，期间隐藏 shell 输入行，关闭后恢复；Ctrl+C、取消及销毁释放提问与面板并恢复可继续输入状态。
+- 原有命令模式、echo 模式、字体、光标空闲闪烁和补全继续通过回归测试。
+
+# scoped_memory_files
+> interactive_commands
+可编辑的内存文件系统与用户工作目录。
+- 公开 createMemoryFiles，支持共享内存数据上的用户 scope、目录导航、列出、读取、写入及文件路径补全；保存只影响当前页面内存。
+- 用户 scope 将 / 定义为个人目录边界，支持相对路径、绝对工作区路径、.、.. 和嵌套目录；越界返回错误，当前目录始终可由 pwd 读取。
+- admin scope 将 user1、user2 目录挂载到 /user1、/user2；挂载读写与用户自身视角共享同一底层文件。
+- 普通用户 scope 的路径及补全限定于个人工作区，目录越界、缺失路径、文件目录冲突给出明确错误。
+
+# stream_widgets
+> interactive_commands
+> monochrome_theme
+可取消的流内加载提示与 Markdown 文档输出。
+- spinner 使用 CLI 风格的字符帧、文字状态和等宽字体；进度条使用文本轨道与百分比；节点保持在输出流中，完成后更新为完成或取消状态。
+- 加载工具接受 AbortSignal，取消和销毁时释放动画计时器；减少动态效果下保留文字状态和进度。
+- Markdown 渲染支持标题、段落、列表、代码块、引用和链接；标题适度缩小，最大 1.5em，颜色与字体符合黑白主题。
+- Markdown 的 HTML、脚本、事件处理属性和危险 URL 被安全处理；链接可读，内容在终端宽度内换行。
+
+# inline_minivim
+> interactive_commands
+> scoped_memory_files
+流内轻量 Vim 风格文本编辑器。
+- 公开 createMiniVim，消费端传入初始文本与保存回调，返回流内交互面板；窗口总高度最多 15 行，长文档内部滚动。
+- 普通模式 h/j/k/l 移动光标，a 在当前字符后进入插入模式，i 在当前位置插入；插入模式使用原生输入、中文输入法及 Esc 返回普通模式。
+- 普通模式 : 进入命令行，支持 w、q、wq、q!；w 保存内容，q 对未保存修改提示，q! 放弃修改退出，关闭后恢复 shell 输入。
+- Ctrl+C 退出编辑器并放弃未保存修改；焦点与事件属于当前面板，关闭和销毁时释放，编辑器输入与 shell 历史分别管理。
+
+# service_example
+> interactive_commands
+> scoped_memory_files
+> stream_widgets
+> inline_minivim
+example/example3 模拟多用户 LunarService。
+- 提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit 共九个命令；prompt 前显示当前身份。
+- guest 身份为 guest 加八位随机十六进制摘要；登录前 ls、cat、minivim、pwd 及 cd 提示先登录，whoami、help、login、exit 可用。
+- 三个演示账号为 admin、user1、user2，公开测试密码统一为 lunarkit；这是纯前端演示状态，文件及密码随构建公开，刷新重置数据。
+- login 先呈现 3 秒连接 spinner，再交互输入用户名和无回显密码；失败提示 Permission denied，成功后更新身份及工作区、打印 LunarService 大字和英文服务器欢迎语。
+- 每个用户有自己的目录，admin 的工作区附加挂载其他用户目录，读取、编辑、cd 与补全均按当前工作区操作。
+- cat 先显示 CLI 风格加载进度条，再呈现文件；.md 文件以安全 Markdown 渲染，其余文本保持原文；加载可被 Ctrl+C 取消。
+- minivim 读取当前工作区文件进行编辑，w 写回内存，q 回到 shell；exit 退出登录恢复 guest 身份。
+- npm run dev:example3 启动第三用例，build 构建三个用例；测试覆盖登录秘密处理、目录边界与共享挂载、编辑保存退出、加载取消、Markdown 安全及已有用例回归。
+
+---
+
+> service_example

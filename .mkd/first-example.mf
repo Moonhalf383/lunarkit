@@ -31,7 +31,7 @@ LunarKit 第一阶段的浏览器终端实体。
 > browser_terminal
 > monochrome_theme
 使用 LunarKit 的公开接口制作第一个消费用例。
-- example/ 通过包公开入口及样式创建终端，显示 LunarKit 大字 banner。
+- example/example1/ 通过包公开入口及样式创建终端，显示 LunarKit 大字 banner。
 - 提交回调调用 write 原样打印每次输入；空字符串、空白文本、HTML 字面量、中文和 emoji 均可提交。
 - 所有输入均按文本回显，包括 clear、help 等字面量；本阶段只实现 echo。
 - 浏览器验证自动聚焦、输入与回显、闪烁光标、输入法、历史草稿恢复、长文本换行与字体加载；单元测试验证状态和实例生命周期。

@@ -17,7 +17,7 @@ TypeScript 浏览器库的开发环境。
 - 源码、测试、样式及配置只允许上述函数、类和易混淆变量的中文单行注释；说明性长文写入 Markdown 或 Markfile，禁止 JSDoc、块注释或行尾注释。
 - 公开消费接口具备类型提示与合理默认值，只需导入 createTerminal、样式并提供挂载元素即可使用；返回 write、focus、destroy 等直观方法，内部状态与组件组装由库管理。
 - 用户输入通过文本节点呈现，保留空白、Unicode 和换行；提交内容原样传给消费者。
-- 库负责输入、命令生命周期、文件集与主题；example/ 负责 echo，example2/ 负责文件挂载和具体命令。使用方通过 destroy 销毁实例，销毁时移除节点、全局事件监听与挂起任务。
+- 库负责输入、命令生命周期、文件集与主题；example/example1/ 负责 echo，example/example2/ 负责只读文件命令，example/example3/ 负责模拟服务器会话。使用方通过 destroy 销毁实例，销毁时移除节点、全局事件监听与挂起任务。
 - 消费用例只导入公开包入口，业务布局和命令留在对应 example 目录，通用能力按 commands/、files/ 等职责放入 src/。
 
 ---
