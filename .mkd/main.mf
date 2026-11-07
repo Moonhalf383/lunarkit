@@ -1,7 +1,16 @@
+> crate::first-example::echo_example
+
 ---
 
+# first_stage
+> echo_example
+交付 TypeScript 开发环境及第一个纯文本 echo 消费用例。
+- 以 first-example.mf 的浏览器终端、主题和消费用例为本阶段验收范围。
+- start 保留完整套件愿景，其余能力在后续阶段实施。
+
 # start
-这是一个前端开发套件。
+> first_stage
+这是一个前端开发套件的完整愿景，覆盖多个交付阶段。
 - 极简信息架构：单流式（Stream-based）视图，所有交互结果沿垂直时间线追加，杜绝多级弹窗、抽屉和嵌套卡片。
 - 输入驱动核心：提供固定或悬浮的统一输入行（Prompt），自带自动聚焦、光标闪烁与回车提交事件。
 - 轻量级历史栈：内置基础的键盘导航，按上下键直接遍历历史输入指令。
@@ -15,3 +24,4 @@
 ---
 
 > start
+> first_stage

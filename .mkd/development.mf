@@ -1,0 +1,25 @@
+---
+
+# typescript_project
+TypeScript 浏览器库的开发环境。
+- 使用 npm 管理依赖并提交 package-lock.json，运行时仅依赖浏览器原生能力。
+- TypeScript 开启 strict，输出 ES Module、类型声明及独立样式；消费者通过公开入口使用库。
+- src/ 按 terminal/、input/、theme/ 等职责组织，example/ 存放消费用例，tests/ 区分单元测试与浏览器测试，避免所有实现平铺在根目录。
+- npm run dev 启动 example，npm run build 生成库与 example，npm run typecheck、npm run lint、npm test、npm run test:e2e 分别验证类型、规范、单元行为和真实浏览器交互。
+- dist/、node_modules/、浏览器测试报告不纳入 Git；关键阶段完成后创建 Git 提交。
+
+# development_rules
+> typescript_project
+检查本项目新增与修改的代码是否符合开发规范。
+- 文件和导出名称直观表达职责；优先小型具名函数和按职责分目录，避免含糊缩写、巨型模块及无关抽象。
+- 每个函数、方法、类均在其声明前紧邻一行扼要的中文注释；箭头函数和回调同样遵守，优先复用具名函数。
+- 容易引起困惑的变量在声明前紧邻一行中文注释解释意图，例如输入法组合态、历史游标、尚未提交的输入快照；普通直观变量不添加注释。
+- 源码、测试、样式及配置只允许上述函数、类和易混淆变量的中文单行注释；说明性长文写入 Markdown 或 Markfile，禁止 JSDoc、块注释或行尾注释。
+- 公开消费接口具备类型提示与合理默认值，只需导入 createTerminal、样式并提供挂载元素即可使用；返回 write、focus、destroy 等直观方法，内部状态与组件组装由库管理。
+- 用户输入通过文本节点呈现，保留空白、Unicode 和换行；提交内容原样传给消费者。
+- 库负责行为与主题，example 负责页面挂载与 echo 业务；使用方通过 destroy 销毁实例，销毁时移除节点和全局事件监听。
+
+---
+
+> typescript_project
+> development_rules

@@ -1,0 +1,35 @@
+> crate::development::development_rules
+
+---
+
+# browser_terminal
+> development_rules
+LunarKit 第一阶段的浏览器终端实体。
+- 公开 createTerminal({ element, banner?, prompt?, onSubmit? })，返回 write(text)、focus()、destroy()；输入文本、回调参数和输出文本使用 string 类型。
+- 通过单一垂直流依次展示 banner、已提交输入和输出，输入行位于当前流的末尾；内容增长时页面允许滚动。
+- 输入行默认提示符为 >，自动聚焦，展示一个闪烁光标；支持键盘编辑、选择、粘贴、中文输入法与回车提交。
+- 输入支持多行粘贴，Enter 提交；组合输入期间的 Enter 用于确认输入法候选，不提交。
+- 上下键遍历已提交的输入，离开历史位置后能够恢复此前正在编辑的草稿。
+- 每次提交将原文交给 onSubmit；write 使用纯文本追加输出，保留前后空格、空行和特殊字符。
+- 实例销毁后释放事件与 DOM，再次调用 destroy 安全；允许不同挂载元素各自拥有独立实例。
+
+# monochrome_theme
+> development_rules
+第一阶段的默认视觉主题实体。
+- 页面与终端白底黑字，使用本地打包的 Kode Mono Medium 字体，font-weight 为 500。
+- banner 是 LunarKit 的大号文字，宽窄屏均可阅读；正文使用统一等宽字体。
+- 可见元素仅包含 banner、prompt、输入文本、输出文本与闪烁光标；不显示边框、面板、工具栏、状态栏或装饰性图标。
+- 键盘焦点保持可操作，输入具有无障碍名称，输出区域具有日志语义；遵循减少动态效果偏好。
+
+# echo_example
+> browser_terminal
+> monochrome_theme
+使用 LunarKit 的公开接口制作第一个消费用例。
+- example/ 通过包公开入口及样式创建终端，显示 LunarKit 大字 banner。
+- 提交回调调用 write 原样打印每次输入；空字符串、空白文本、HTML 字面量、中文和 emoji 均可提交。
+- 所有输入均按文本回显，包括 clear、help 等字面量；本阶段只实现 echo。
+- 浏览器验证自动聚焦、输入与回显、闪烁光标、输入法、历史草稿恢复、长文本换行与字体加载；单元测试验证状态和实例生命周期。
+
+---
+
+> echo_example
