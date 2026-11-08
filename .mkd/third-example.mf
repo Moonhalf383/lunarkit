@@ -63,3 +63,5 @@ example/example3 模拟多用户 LunarService。
 ---
 
 > service_example
+> interactive_commands
+> stream_widgets

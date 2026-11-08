@@ -1,6 +1,7 @@
 > crate::first-example::echo_example
 > crate::second-example::command_example
 > crate::third-example::service_example
+> crate::fourth-example::merchant_example
 
 ---
 
@@ -25,8 +26,14 @@
 通过 npm run check 的类型、规范、构建与消费声明验证，以及 31 项单元测试、26 项开发页测试、3 项生产产物测试；具体记录见 verification.md。
 - 以 third-example.mf 定义的交互、文件、动画、Markdown、编辑器和会话为验收范围。
 
-# start
+# fourth_stage
 > third_stage
+> merchant_example
+交付通用选择、打字机和可视化组件，以及 LuanrMerchant 回合制跑商游戏。
+- 以 fourth-example.mf 的 SDK 生命周期、图表、三维渲染、游戏规则与消费用例为验收范围。
+
+# start
+> fourth_stage
 这是一个前端开发套件的完整愿景，覆盖多个交付阶段。
 - 极简信息架构：单流式（Stream-based）视图，所有交互结果沿垂直时间线追加，杜绝多级弹窗、抽屉和嵌套卡片。
 - 输入驱动核心：提供固定或悬浮的统一输入行（Prompt），自带自动聚焦、光标闪烁与回车提交事件。
@@ -44,3 +51,4 @@
 > first_stage
 > second_stage
 > third_stage
+> fourth_stage
