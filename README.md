@@ -90,7 +90,7 @@ const terminal = createTerminal({
 
 `CommandContext` 提供 `args`、`signal` 和 `write`。通过上下文 `write` 输出可得到取消隔离：Ctrl+C 后该次命令的迟到输出与错误会被过滤。消费端自行发起的网络或长任务应使用 `signal` 主动释放资源；同步长循环需要拆分成可取消的异步工作，浏览器才能处理键盘事件。
 
-同一终端一次运行一个命令；运行期间可编辑草稿，Enter 保留草稿，Ctrl+C 取消后即可继续提交。空闲时 Ctrl+C 清空草稿并打印 `^C`，有选区时保留复制行为。上下箭头恢复历史输入及编辑前草稿。命令模式下 Tab 补全命令名和参数，候选唯一时插入，歧义时先扩展公共前缀、再列出候选；Shift+Tab 可移出输入框。参数支持引号和反斜线转义，带空格文件名会自动引用。
+同一终端一次运行一个命令；默认 `busyInput: 'editable'`，运行期间可编辑草稿，Enter 保留草稿，Ctrl+C 取消后即可继续提交。消费端可配置 `busyInput: 'hidden'`，忙碌期间隐藏并暂停输入，交互提问时显示回答行；当前终端保留 Ctrl+C，完成或取消后恢复输入。example3 使用 hidden，前两个用例保留原有行为。空闲时 Ctrl+C 清空草稿并打印 `^C`，有选区时保留复制行为。上下箭头恢复历史输入及编辑前草稿。命令模式下 Tab 补全命令名和参数，候选唯一时插入，歧义时先扩展公共前缀、再列出候选；Shift+Tab 可移出输入框。参数支持引号和反斜线转义，带空格文件名会自动引用。
 
 `createTextFiles` 接受相对路径到文本或 `() => Promise<string>` 的映射，提供 `list(directory?)`、`read(path, signal?)`、`complete(prefix)`。文件集只读，路径限制在挂载根目录；`list` 返回直属条目，目录带 `/` 后缀。第二用例的当前目录固定为挂载根目录，嵌套文件通过相对路径读取。
 
@@ -104,11 +104,11 @@ const terminal = createTerminal({
 npm run dev:example3
 ```
 
-第三用例位于 `example/example3/`，提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit。演示账号 `admin`、`user1`、`user2` 的公开测试密码均为 `lunarkit`。输入 `login` 后等待 3 秒连接动画，再输入用户名和无回显密码。登录后显示 LunarService 欢迎信息，cat 呈现加载进度，Markdown 文档直接在流中排版。
+第三用例位于 `example/example3/`，提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit。演示账号 `admin`、`user1`、`user2` 的公开测试密码均为 `lunarkit`。输入 `login` 后先输入用户名和无回显密码，校验通过后播放 3 秒连接动画，再显示 LunarService 欢迎信息。cat 呈现加载进度，Markdown 文档直接在流中排版。加载期间隐藏并禁用 shell 输入行，Ctrl+C 仍可取消。prompt 显示用户名和当前工作区路径，cd 后同步更新。
 
 用户根目录在各自工作区内显示为 `/`；admin 将其他用户目录挂载在 `/user1`、`/user2`，编辑结果共享内存。退出登录保留本页面修改，刷新页面重置。**这是前端交互演示，账号与文件随前端代码公开，不提供真实服务端认证或安全存储。**
 
-minivim 是 example3 的消费端面板，窗口最多 15 行：普通模式 `hjkl` 移动，`i` / `a` 插入，`Esc` 返回；`:w` 保存，`:q` 退出，`:wq` 保存退出，`:q!` 放弃修改，Ctrl+C 取消。编辑和保存均发生在页面内存。
+minivim 是 example3 的消费端面板，窗口最多 15 行：普通模式显示完整字素方块光标，`hjkl` 移动；`i` / `a` 切换为竖线光标并插入，`Esc` 返回方块光标；`:w` 保存，`:q` 退出，`:wq` 保存退出，`:q!` 放弃修改，Ctrl+C 取消。编辑和保存均发生在页面内存。
 
 SDK 新增的是可复用的通用接口：
 

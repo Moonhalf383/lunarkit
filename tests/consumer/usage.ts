@@ -49,4 +49,4 @@ async function interactive(context: CommandContext): Promise<void> {
   await context.present(panel);
 }
 const interactiveCommands: Commands = { interactive: { description: 'Consumer-defined interaction.', run: interactive } };
-createTerminal({ element: document.createElement('main'), commands: interactiveCommands }).destroy();
+createTerminal({ element: document.createElement('main'), commands: interactiveCommands, busyInput: 'hidden' }).destroy();

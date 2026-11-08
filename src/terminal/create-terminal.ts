@@ -26,6 +26,10 @@ export function createTerminal(options: TerminalOptions): Terminal {
   stream.setAttribute('aria-label', '交互记录');
   stream.setAttribute('aria-live', 'polite');
   let destroyed = false;
+  let busy = false;
+  // 面板释放焦点后保留本轮输入所有权，供命令最终完成时恢复。
+  let restoreOwnedFocus = false;
+  root.tabIndex = -1;
 
   // 将最新输入行滚动到可见区域。
   function revealPrompt(): void {
@@ -65,7 +69,25 @@ export function createTerminal(options: TerminalOptions): Terminal {
     return currentPrompt;
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write, { read, present, setPrompt }) : undefined;
+  // 按消费配置恢复输入行，忙碌时将取消按键交给终端容器。
+  function restoreInput(previouslyOwned?: boolean): void {
+    if (destroyed) return;
+    const hidden = options.busyInput === 'hidden' && busy;
+    const ownedFocus = previouslyOwned ?? root.contains(document.activeElement);
+    restoreOwnedFocus = ownedFocus;
+    controller.setVisible(!hidden, ownedFocus);
+    if (hidden && ownedFocus) root.focus({ preventScroll: true });
+    root.setAttribute('aria-busy', String(busy));
+  }
+
+  // 运行态通知只用于通用交互生命周期，具体业务由消费端管理。
+  function busyChanged(value: boolean): void {
+    busy = value;
+    const detachedFocus = document.activeElement === document.body && restoreOwnedFocus;
+    interaction.restoreShell(root.contains(document.activeElement) || detachedFocus);
+  }
+
+  const runtime = commands ? createCommandRuntime(commands, write, { read, present, setPrompt }, busyChanged) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
   function record(text: string, label = currentPrompt): void {
@@ -113,7 +135,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     actions.isReading = isReading;
   }
   const controller = createPrompt(document, prompt, actions);
-  const interaction = createInteraction(controller, record, write, getLabel);
+  const interaction = createInteraction(controller, record, write, getLabel, restoreInput);
 
   // 检查当前输入是否属于命令提问。
   function isReading(): boolean {
@@ -124,11 +146,21 @@ export function createTerminal(options: TerminalOptions): Terminal {
   function interruptPanel(): void {
     cancel('');
   }
+  // 输入行隐藏时仍在当前终端内响应取消，避免拦截外部输入。
+  function busyKeydown(event: KeyboardEvent): void {
+    if (event.target === root && busy && event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      cancel('');
+    }
+  }
+  root.addEventListener('keydown', busyKeydown);
   root.addEventListener('lk-interrupt', interruptPanel);
 
   // 将焦点交给仍存活的输入行。
   function focus(): void {
-    if (!destroyed) controller.focus();
+    if (destroyed) return;
+    if (controller.element.hidden) root.focus({ preventScroll: true });
+    else controller.focus();
   }
 
   // 从消费端取消任务及草稿并保留可继续输入的状态。
@@ -142,6 +174,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     destroyed = true;
     controller.destroy();
     runtime?.interrupt();
+    root.removeEventListener('keydown', busyKeydown);
     root.removeEventListener('lk-interrupt', interruptPanel);
     root.remove();
   }

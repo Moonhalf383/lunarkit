@@ -7,6 +7,7 @@ export function createInteraction(
   record: (text: string, label?: string) => void,
   write: (node: HTMLElement) => void,
   getLabel: () => string,
+  restore: (ownedFocus?: boolean) => void,
 ) {
   // 仅允许一个交互回答处于等待状态。
   let pending: { answer: (text: string) => void; secret: boolean; label: string } | undefined;
@@ -40,6 +41,7 @@ export function createInteraction(
         pending = undefined;
         prompt.setSecret(false);
         prompt.setLabel(getLabel());
+        restore();
       }
       // 接受答案后恢复输入状态。
       function receive(text: string): void {
@@ -55,7 +57,7 @@ export function createInteraction(
       signal.addEventListener('abort', abort, { once: true });
       prompt.setSecret(options.secret ?? false);
       prompt.setLabel(options.prompt);
-      prompt.focus();
+      prompt.setVisible(true);
     }
   }
 
@@ -81,12 +83,13 @@ export function createInteraction(
         panelActive = false;
         signal.removeEventListener('abort', abort);
         panel.element.removeEventListener('keydown', keydown);
+        const ownedFocus = panel.element.contains(panel.element.ownerDocument.activeElement);
         try {
           panel.dispose();
         } catch (error) {
           reject(error);
         } finally {
-          prompt.setVisible(true);
+          restore(ownedFocus);
         }
         return true;
       }
@@ -127,5 +130,10 @@ export function createInteraction(
     }
   }
 
-  return { isReading, answer, read, present };
+  // 命令结束时仅恢复未被提问或面板占用的输入行。
+  function restoreShell(ownedFocus?: boolean): void {
+    if (!pending && !panelActive) restore(ownedFocus);
+  }
+
+  return { isReading, answer, read, present, restoreShell };
 }

@@ -94,11 +94,71 @@ async function focusOnDestroy(): Promise<void> {
   expect(document.activeElement).toBe(external);
 }
 
+// 验证异步完成保留外部焦点，隐藏输入时显式 focus 指向取消容器。
+async function busyFocus(): Promise<void> {
+  for (const busyInput of ['editable', 'hidden'] as const) {
+    let finish!: () => void;
+    // 暂存命令的异步完成入口。
+    function wait(resolve: () => void): void { finish = resolve; }
+    // 执行一段受控异步工作。
+    async function run(): Promise<void> { await new Promise<void>(wait); }
+    const terminal = createTerminal({ element: document.body, busyInput, commands: { wait: { description: '', run } } });
+    terminals.push(terminal);
+    submit('wait');
+    terminal.focus();
+    expect(document.activeElement?.className).toBe(busyInput === 'hidden' ? 'lk-terminal' : 'lk-input');
+    const external = document.createElement('input');
+    document.body.append(external);
+    external.focus();
+    finish();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(external);
+    terminal.destroy();
+  }
+}
+
+// 验证面板关闭后继续加载仍保留终端 Ctrl+C 取消能力。
+async function afterPanel(): Promise<void> {
+  let close!: () => void;
+  let finish!: () => void;
+  let signal!: AbortSignal;
+  const node = document.createElement('button');
+  // 暂存面板关闭入口。
+  function waitClose(resolve: () => void): void { close = resolve; }
+  // 暂存后续加载结束入口。
+  function waitFinish(resolve: () => void): void { finish = resolve; }
+  // 将焦点交给面板控件。
+  function focus(): void { node.focus(); }
+  // 移除拥有焦点的面板控件。
+  function dispose(): void { node.remove(); }
+  // 面板结束后继续模拟加载。
+  async function run(context: CommandContext): Promise<void> {
+    signal = context.signal;
+    await context.present({ element: node, closed: new Promise<void>(waitClose), focus, dispose });
+    await new Promise<void>(waitFinish);
+  }
+  const terminal = createTerminal({ element: document.body, busyInput: 'hidden', commands: { panel: { description: '', run } } });
+  terminals.push(terminal);
+  submit('panel');
+  close();
+  await Promise.resolve();
+  await Promise.resolve();
+  const root = document.querySelector('.lk-terminal')!;
+  expect(document.activeElement).toBe(root);
+  root.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+  expect(signal.aborted).toBe(true);
+  expect(document.querySelector<HTMLTextAreaElement>('textarea')!.disabled).toBe(false);
+  finish();
+}
+
 // 组织 SDK 通用交互生命周期测试。
 function suite(): void {
   afterEach(cleanup);
   it('保护秘密输入及取消记录', secretInput);
   it('处理面板启动阶段取消', panelLifecycle);
   it('销毁时保持外部焦点', focusOnDestroy);
+  it('异步完成保持外部焦点', busyFocus);
+  it('面板结束后继续加载可取消', afterPanel);
 }
 describe('interactive commands', suite);

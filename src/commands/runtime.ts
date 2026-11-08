@@ -3,7 +3,7 @@ import { parseCommand } from './parse.js';
 import type { CommandInteraction, Commands, InteractivePanel, ReadOptions, TerminalOutput } from './types.js';
 
 // 管理单个运行命令的取消信号，过滤已取消任务的异步结果。
-export function createCommandRuntime(commands: Commands, write: (output: TerminalOutput) => void, interaction?: CommandInteraction) {
+export function createCommandRuntime(commands: Commands, write: (output: TerminalOutput) => void, interaction?: CommandInteraction, onBusyChange?: (busy: boolean) => void) {
   // 当前控制器同时作为任务身份，防止旧任务覆盖新任务状态。
   let active: AbortController | undefined;
 
@@ -17,6 +17,7 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
     const previous = active;
     active = undefined;
     previous?.abort();
+    if (previous) onBusyChange?.(false);
   }
 
   // 解析输入并执行命令，将有效任务的输出交给终端。
@@ -24,6 +25,7 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
     if (active) return;
     const controller = new AbortController();
     active = controller;
+    onBusyChange?.(true);
     // 只写入当前仍有效的命令输出。
     function guardedWrite(output: TerminalOutput): void {
       if (active === controller && !controller.signal.aborted) write(output);
@@ -55,7 +57,10 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
     } catch (error) {
       guardedWrite(error instanceof Error ? error.message : String(error));
     } finally {
-      if (active === controller) active = undefined;
+      if (active === controller) {
+        active = undefined;
+        onBusyChange?.(false);
+      }
     }
   }
 

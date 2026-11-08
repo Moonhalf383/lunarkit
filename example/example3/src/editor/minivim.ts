@@ -1,4 +1,5 @@
 import type { InteractivePanel } from 'lunarkit';
+import { createNormalCursor } from './cursor';
 import { moveCharacter, moveLine } from './movement';
 
 interface MiniVimOptions {
@@ -25,7 +26,11 @@ export function createMiniVim({ filename, text, save }: MiniVimOptions): Interac
   command.className = 'minivim-command';
   command.setAttribute('aria-label', 'Vim 命令');
   command.hidden = true;
-  element.append(editor, status, command);
+  const viewport = document.createElement('div');
+  viewport.className = 'minivim-viewport';
+  viewport.append(editor);
+  element.append(viewport, status, command);
+  const cursor = createNormalCursor(editor, viewport);
   let saved = text;
   let mode: 'NORMAL' | 'INSERT' | 'COMMAND' = 'NORMAL';
   let disposed = false;
@@ -48,6 +53,7 @@ export function createMiniVim({ filename, text, save }: MiniVimOptions): Interac
     const height = parseFloat(getComputedStyle(editor).lineHeight);
     if (line * height < editor.scrollTop) editor.scrollTop = line * height;
     if ((line + 1) * height > editor.scrollTop + editor.clientHeight) editor.scrollTop = (line + 1) * height - editor.clientHeight;
+    cursor.render();
   }
 
   // 切换模式并将焦点交给相应输入。
@@ -59,6 +65,7 @@ export function createMiniVim({ filename, text, save }: MiniVimOptions): Interac
       command.value = ':';
       command.focus();
     } else editor.focus();
+    cursor.setNormal(next === 'NORMAL');
     updateStatus();
   }
 
@@ -126,13 +133,17 @@ export function createMiniVim({ filename, text, save }: MiniVimOptions): Interac
 
   // 聚焦当前编辑模式。
   function focus(): void {
-    if (!disposed) (mode === 'COMMAND' ? command : editor).focus();
+    if (!disposed) {
+      (mode === 'COMMAND' ? command : editor).focus();
+      cursor.setNormal(mode === 'NORMAL');
+    }
   }
 
   // 退出后移除面板监听及 DOM，保留已保存的内存数据。
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    cursor.dispose();
     element.removeEventListener('keydown', keydown);
     editor.removeEventListener('input', input);
     element.remove();

@@ -11,8 +11,6 @@ async function execute(page: Page, value: string): Promise<void> {
 // 使用虚拟时钟完成演示连接和交互认证。
 async function login(page: Page, user = 'user1'): Promise<void> {
   await execute(page, 'login');
-  await expect(page.locator('.lk-loading').last()).toContainText('Connecting');
-  await page.clock.runFor(3000);
   await expect(page.locator('.lk-prompt-prefix').last()).toHaveText('login as:');
   const input = page.getByRole('textbox', { name: '输入内容', exact: true });
   await input.fill(user);
@@ -24,15 +22,21 @@ async function login(page: Page, user = 'user1'): Promise<void> {
   await expect(page.locator('.lk-input-mirror')).toHaveText('\u200b');
   await expect(page.getByRole('log')).not.toContainText('lunarkit');
   await password.press('Enter');
+  await expect(page.locator('.lk-loading').last()).toContainText('Connecting');
+  await expect(page.locator('.lk-prompt')).toBeHidden();
+  await expect(page.locator('.lk-input')).toBeDisabled();
+  await page.clock.runFor(1500);
+  await expect(page.locator('.lk-prompt')).toBeHidden();
+  await page.clock.runFor(1500);
   await expect(page.locator('.service-banner').last()).toHaveText('LunarService');
-  await expect(page.locator('.lk-prompt-prefix').last()).toHaveText(`${user} ❯`);
+  await expect(page.locator('.lk-prompt-prefix').last()).toHaveText(`${user} / ❯`);
 }
 
 // 验证 guest 边界、秘密输入、登录及 Markdown 加载。
 async function session({ page }: { page: Page }): Promise<void> {
   await page.clock.install();
   await page.goto('http://127.0.0.1:4176/');
-  await expect(page.locator('.lk-prompt-prefix')).toHaveText(/^guest[0-9a-f]{8} ❯$/u);
+  await expect(page.locator('.lk-prompt-prefix')).toHaveText(/^guest[0-9a-f]{8} \/ ❯$/u);
   for (const command of ['pwd', 'ls', 'cat readme.md', 'minivim notes.txt', 'cd']) {
     await execute(page, command);
     await expect(page.locator('.lk-output').last()).toHaveText('Please login first.');
@@ -42,17 +46,22 @@ async function session({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.lk-output').last()).toHaveText('/');
   await execute(page, 'cat readme.md');
   await expect(page.locator('.lk-loading').last()).toContainText('0%');
+  await expect(page.locator('.lk-prompt')).toBeHidden();
+  await expect(page.locator('.lk-input')).toBeDisabled();
+  await page.keyboard.type('ignored');
   await page.clock.runFor(1000);
+  await expect(page.getByRole('textbox', { name: '输入内容', exact: true })).toHaveValue('');
   await expect(page.locator('.lk-markdown h1')).toHaveText('User One');
   await expect(page.locator('.lk-markdown h1')).toHaveCSS('font-size', '24px');
   await page.screenshot({ path: 'test-results/example3-session.png', fullPage: true });
   await execute(page, 'cd docs');
+  await expect(page.locator('.lk-prompt-prefix').last()).toHaveText('user1 /docs ❯');
   await execute(page, 'pwd');
   await expect(page.locator('.lk-output').last()).toHaveText('/docs');
   await execute(page, 'cd ../../');
   await expect(page.locator('.lk-output').last()).toContainText('escapes workspace');
   await execute(page, 'exit');
-  await expect(page.locator('.lk-prompt-prefix').last()).toHaveText(/^guest[0-9a-f]{8} ❯$/u);
+  await expect(page.locator('.lk-prompt-prefix').last()).toHaveText(/^guest[0-9a-f]{8} \/ ❯$/u);
   await execute(page, 'whoami');
   await expect(page.locator('.lk-output').last()).toHaveText(/^guest[0-9a-f]{8}$/u);
 }
@@ -67,9 +76,15 @@ async function editor({ page }: { page: Page }): Promise<void> {
   const buffer = page.getByRole('textbox', { name: '编辑文件', exact: true });
   await expect(buffer).toBeFocused();
   await expect(page.locator('.lk-prompt')).toBeHidden();
+  await expect(page.locator('.minivim-caret')).toBeVisible();
+  await expect(buffer).toHaveCSS('caret-color', 'rgba(0, 0, 0, 0)');
   await buffer.press('i');
+  await expect(page.locator('.minivim-caret')).toBeHidden();
+  await expect(buffer).toHaveCSS('caret-color', 'rgb(0, 0, 0)');
   await buffer.press('X');
   await buffer.press('Escape');
+  await expect(page.locator('.minivim-caret')).toBeVisible();
+  await expect(buffer).toBeFocused();
   await buffer.press(':');
   const command = page.getByRole('textbox', { name: 'Vim 命令', exact: true });
   await command.fill(':q');
@@ -114,7 +129,13 @@ async function cancellation({ page }: { page: Page }): Promise<void> {
   await page.goto('http://127.0.0.1:4176/');
   await execute(page, 'login');
   const input = page.getByRole('textbox', { name: '输入内容', exact: true });
-  await input.press('Control+c');
+  await input.fill('user1');
+  await input.press('Enter');
+  const password = page.getByRole('textbox', { name: '密码', exact: true });
+  await password.fill('lunarkit');
+  await password.press('Enter');
+  await expect(page.locator('.lk-prompt')).toBeHidden();
+  await page.keyboard.press('Control+c');
   await page.clock.runFor(4000);
   await expect(page.locator('.lk-loading')).toContainText('cancelled');
   await expect(page.locator('.lk-prompt-prefix').last()).toHaveText(/^guest/u);
@@ -147,7 +168,7 @@ async function failures({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.lk-terminal')).not.toContainText('wrong-password');
   await login(page);
   await execute(page, 'cat readme.md');
-  await input.press('Control+c');
+  await page.keyboard.press('Control+c');
   await page.clock.runFor(1500);
   await expect(page.locator('.lk-loading').last()).toContainText('cancelled');
   await expect(page.locator('.lk-markdown')).toHaveCount(0);
@@ -163,6 +184,45 @@ async function failures({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.lk-terminal')).not.toContainText('selected-secret');
 }
 
+// 验证 NORMAL 完整中文方块、INSERT 竖线及编辑器内部滚动定位。
+async function cursorGeometry({ page }: { page: Page }): Promise<void> {
+  await page.clock.install();
+  await page.goto('http://127.0.0.1:4176/');
+  await login(page);
+  await execute(page, 'minivim notes.txt');
+  const input = page.getByRole('textbox', { name: '编辑文件', exact: true });
+  await input.press('i');
+  await input.fill('你好🙂\n' + 'long line\n'.repeat(30));
+  await input.press('Escape');
+  await expect(page.locator('.minivim-caret')).toBeVisible();
+  // 将 NORMAL 光标放在中文字符开头并同步原生选区事件。
+  function selectChinese(input: HTMLTextAreaElement): void {
+    input.setSelectionRange(0, 0);
+    input.scrollTop = 0;
+    input.dispatchEvent(new Event('select'));
+  }
+  await input.evaluate(selectChinese);
+  const caret = page.locator('.minivim-caret');
+  await expect(caret).toHaveCSS('width', '16px');
+  await expect(caret).toHaveCSS('height', '16px');
+  await input.press('l');
+  const first = await caret.boundingBox();
+  await input.press('l');
+  const second = await caret.boundingBox();
+  expect(second!.x - first!.x).toBeCloseTo(16, 1);
+  for (let index = 0; index < 20; index += 1) await input.press('j');
+  const bufferBounds = await input.boundingBox();
+  const cursorBounds = await caret.boundingBox();
+  expect(cursorBounds!.y).toBeGreaterThanOrEqual(bufferBounds!.y);
+  expect(cursorBounds!.y + cursorBounds!.height).toBeLessThanOrEqual(bufferBounds!.y + bufferBounds!.height + 1);
+  await input.press('i');
+  await expect(caret).toBeHidden();
+  await expect(input).toHaveCSS('caret-color', 'rgb(0, 0, 0)');
+  await input.press('Escape');
+  await expect(caret).toBeVisible();
+}
+
+test('example3 Vim 模式光标与滚动', cursorGeometry);
 test('example3 错误登录与加载取消', failures);
 test('example3 登录与工作目录', session);
 test('example3 流内编辑和共享挂载', editor);

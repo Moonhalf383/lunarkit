@@ -8,6 +8,7 @@ export interface TerminalOptions {
   maxWidth?: number | string;
   onSubmit?: (text: string) => void;
   commands?: Commands;
+  busyInput?: 'editable' | 'hidden';
 }
 
 export interface Terminal {

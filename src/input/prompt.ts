@@ -9,7 +9,7 @@ export interface PromptController {
   clear: () => string;
   setLabel: (text: string) => void;
   setSecret: (secret: boolean) => void;
-  setVisible: (visible: boolean) => void;
+  setVisible: (visible: boolean, focusInput?: boolean) => void;
 }
 
 export interface PromptActions {
@@ -192,10 +192,12 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   }
 
   // 在流内面板接管键盘期间暂停显示输入行。
-  function setVisible(visible: boolean): void {
+  function setVisible(visible: boolean, focusInput = true): void {
     if (disposed) return;
     element.hidden = !visible;
-    if (visible) focus();
+    input.disabled = !visible;
+    if (visible && focusInput) focus();
+    if (!visible) stopBlinking();
   }
 
   // 将键盘焦点移到输入框。

@@ -21,7 +21,7 @@ export function createService() {
 
   // 返回当前身份的提示符。
   function prompt(): string {
-    return `${username} ❯`;
+    return `${username} ${workspace?.pwd() ?? '/'} ❯`;
   }
 
   // 确认用户已登录再访问个人文件。
@@ -46,11 +46,12 @@ export function createService() {
     const { args, signal, write, read, setPrompt } = context;
     noArgs(args, 'login');
     if (workspace) throw new Error('Already logged in. Use exit before switching users.');
-    await showLoading({ label: 'Connecting to LunarService', duration: 3000, signal, write });
     const name = (await read({ prompt: 'login as:' })).trim();
     const password = await read({ prompt: `${name}@lunarservice password:`, secret: true });
     signal.throwIfAborted();
     if (!users.has(name) || password !== 'lunarkit') throw new Error('Permission denied.');
+    await showLoading({ label: 'Connecting to LunarService', duration: 3000, signal, write });
+    signal.throwIfAborted();
     workspace = files.scope(`/${name}`, name === 'admin' ? { user1: '/user1', user2: '/user2' } : {});
     username = name;
     setPrompt(prompt());
@@ -65,10 +66,11 @@ export function createService() {
   }
 
   // 切换当前工作区目录，空参数返回个人根目录。
-  function cd({ args }: CommandContext): void {
+  function cd({ args, setPrompt }: CommandContext): void {
     const current = authenticated();
     if (args.length > 1) throw new Error('Usage: cd [directory]');
     current.cd(args[0] ?? '/');
+    setPrompt(prompt());
   }
 
   // 输出工作区内的当前位置。

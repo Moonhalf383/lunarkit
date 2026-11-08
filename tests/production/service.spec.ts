@@ -8,13 +8,14 @@ async function builtSession({ page }: { page: Page }): Promise<void> {
   const input = page.getByRole('textbox', { name: '输入内容', exact: true });
   await input.fill('login');
   await input.press('Enter');
-  await page.clock.runFor(3000);
   await expect(page.locator('.lk-prompt-prefix').last()).toHaveText('login as:');
   await input.fill('user2');
   await input.press('Enter');
   const secret = page.getByRole('textbox', { name: '密码', exact: true });
   await secret.fill('lunarkit');
   await secret.press('Enter');
+  await expect(page.locator('.lk-prompt')).toBeHidden();
+  await page.clock.runFor(3000);
   await expect(page.locator('.service-banner')).toHaveText('LunarService');
   await input.fill('cat readme.md');
   await input.press('Enter');

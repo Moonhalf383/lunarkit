@@ -40,7 +40,33 @@ html, body {
   font: inherit;
   caret-color: #000;
 }
-.minivim-buffer { overflow: auto; }
+.minivim-viewport {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: #fff;
+}
+.minivim-buffer { height: 100%; overflow: auto; }
+.minivim-buffer.minivim-normal { caret-color: transparent; }
+.minivim-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  white-space: pre;
+  tab-size: 8;
+  visibility: hidden;
+  pointer-events: none;
+}
+.minivim-caret {
+  position: absolute;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
 .minivim-status {
   overflow: hidden;
   white-space: pre;
