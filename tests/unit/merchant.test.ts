@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { events } from '../../example/example4/src/content/events';
 import { items } from '../../example/example4/src/content/items';
 import { distance, planets } from '../../example/example4/src/content/planets';
-import { buyItem, capacity, createRun, depart, price, resolveEvent, service, trade, travel, useItem } from '../../example/example4/src/game/engine';
+import { buyItem, capacity, createRun, depart, price, resolveEvent, service, shopItems, trade, travel, useItem } from '../../example/example4/src/game/engine';
 import { createStorage, validRun } from '../../example/example4/src/game/storage';
 
 // 验证内容规模、稳定标识和完全图的对称边权。
@@ -12,6 +12,7 @@ function content(): void {
   expect(events).toHaveLength(30);
   expect(new Set(items.map(itemId)).size).toBe(20);
   for (const event of events) expect(event.options.length).toBeGreaterThanOrEqual(2);
+  for (const world of planets) expect(shopItems(world.id)).toHaveLength(3);
   for (const a of planets) for (const b of planets) if (a !== b) expect(distance(a.id, b.id)).toBe(distance(b.id, a.id));
   // 提取内容中的稳定标识。
   function itemId(entry: { id: string }): string { return entry.id; }
@@ -69,6 +70,7 @@ function turns(): void {
 function equipment(): void {
   const run = createRun(7);
   run.credits = 10000;
+  run.location = 'forge';
   buyItem(run, 'tank');
   expect(capacity(run, 'fuel')).toBe(140);
   service(run, 'fuel', 40);

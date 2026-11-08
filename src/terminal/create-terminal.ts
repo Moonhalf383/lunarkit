@@ -1,3 +1,5 @@
+import { createViews } from './views.js';
+import type { ViewState } from './views.js';
 import { createInteraction } from './interaction.js';
 import { createChoices } from '../input/choices.js';
 import { trimHistory } from './history.js';
@@ -24,7 +26,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     root.style.maxWidth = typeof options.maxWidth === 'number' ? `${options.maxWidth}px` : options.maxWidth;
   }
   root.setAttribute('aria-label', 'LunarKit');
-  const stream = document.createElement('div');
+  let stream: HTMLElement = document.createElement('div');
   stream.className = 'lk-stream';
   stream.setAttribute('role', 'log');
   stream.setAttribute('aria-label', '交互记录');
@@ -45,6 +47,10 @@ export function createTerminal(options: TerminalOptions): Terminal {
     scrollFrame = undefined;
     if (destroyed) return;
     const panel = interaction.getPanel();
+    if (panel?.dataset.scroll === 'end') {
+      panel.scrollIntoView?.({ block: 'end', behavior: 'instant' });
+      return;
+    }
     if (panel) {
       const focused = document.activeElement;
       if (focused && panel.contains(focused)) focused.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
@@ -64,7 +70,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     if (destroyed) return;
     trimHistory(stream, maxHistoryLines, interaction.getPanel());
     for (const [node, component] of components) {
-      if (!stream.contains(node)) {
+      if (!views.contains(node)) {
         components.delete(node);
         component.dispose();
       }
@@ -139,7 +145,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     interaction.restoreShell(root.contains(document.activeElement) || detachedFocus);
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt }, busyChanged) : undefined;
+  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt, openView }, busyChanged) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
   function record(text: string, label = currentPrompt): void {
@@ -174,17 +180,11 @@ export function createTerminal(options: TerminalOptions): Terminal {
     record(`${answering ? '' : text}^C`);
   }
 
-  // 将补全歧义以纯文本候选列表写入当前流。
-  function suggest(candidates: readonly string[]): void {
-    write(candidates.join('  '));
-  }
-
   const actions: PromptActions = { submit };
   if (runtime) {
     actions.isBusy = runtime.isBusy;
     actions.interrupt = cancel;
     actions.complete = runtime.complete;
-    actions.suggest = suggest;
     actions.isReading = isReading;
     actions.canInterrupt = runtime.canInterrupt;
   }
@@ -204,6 +204,37 @@ export function createTerminal(options: TerminalOptions): Terminal {
   }
   const streamObserver = new MutationObserver(streamChanged);
   streamObserver.observe(stream, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
+  // 切换会话输出流，同时恢复对应提示符和公开草稿。
+  function activateView(state: ViewState): void {
+    streamObserver.disconnect();
+    if (stream.parentNode) stream.replaceWith(state.stream);
+    else root.insertBefore(state.stream, controller.element);
+    stream = state.stream;
+    const banner = root.querySelector<HTMLElement>(':scope > .lk-banner');
+    if (banner) banner.hidden = state.stream !== initialStream;
+    currentPrompt = state.prompt;
+    controller.setLabel(currentPrompt);
+    controller.setDraft(state.draft);
+    streamObserver.observe(stream, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
+    revealPrompt();
+  }
+  // 关闭视图时释放其组件及 DOM，保留其他视图资源。
+  function releaseView(output: HTMLElement): void {
+    for (const [node, component] of components) {
+      if (output.contains(node)) {
+        components.delete(node);
+        component.dispose();
+      }
+    }
+    output.remove();
+  }
+  const initialStream = stream;
+  const views = createViews({ stream, prompt: currentPrompt, draft: '' }, activateView, releaseView);
+  // 创建与命令名称无关的可恢复会话输出流。
+  function openView() {
+    if (destroyed || interaction.isReading() || interaction.getPanel()) throw new Error('Open a view after the current interaction completes.');
+    return views.open({ prompt: currentPrompt, draft: controller.getDraft() });
+  }
   const visibilityObserver = new MutationObserver(revealPrompt);
   visibilityObserver.observe(controller.element, { attributes: true, attributeFilter: ['hidden'] });
   const layoutObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(revealPrompt);
@@ -276,7 +307,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     root.removeEventListener('focusin', resetPriority);
     root.removeEventListener('keydown', priorityKeydown, true);
     root.removeEventListener('keydown', busyKeydown);
-    for (const component of components.values()) component.dispose();
+    views.dispose();
     components.clear();
     root.removeEventListener('lk-interrupt', interruptPanel);
     root.remove();
@@ -291,5 +322,5 @@ export function createTerminal(options: TerminalOptions): Terminal {
   root.append(stream, controller.element);
   element.append(root);
   focus();
-  return { write, focus, interrupt, destroy, setPrompt };
+  return { write, focus, interrupt, destroy, setPrompt, openView };
 }

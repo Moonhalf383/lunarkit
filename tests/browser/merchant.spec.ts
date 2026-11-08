@@ -50,6 +50,8 @@ async function saveAndResume({ page }: { page: Page }): Promise<void> {
   }
   expect(await page.evaluate(measureColumns)).toEqual({ difference: 0, fontSize: '10px' });
   await expect(page.locator('.lk-model').last()).toBeVisible();
+  await expect(page.locator('.merchant-rings svg text')).toHaveCount(0);
+  await expect(page.locator('.merchant-rings figcaption')).toHaveText(['Hull 100/100', 'Fuel 100/100']);
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'test-results/example4-dashboard.png', fullPage: true });
   await command(page, 'fetch history');
@@ -97,6 +99,7 @@ async function visualDetails({ page }: { page: Page }): Promise<void> {
   await command(page, 'fetch prism');
   await expect(page.locator('.merchant-planet')).toContainText('Prism');
   await expect(page.locator('.merchant-planet > div').first()).toHaveCSS('text-align', 'right');
+  await expect(page.locator('.merchant-planet .lk-model')).toHaveCSS('background-color', 'rgb(9, 9, 9)');
   await page.setViewportSize({ width: 320, height: 640 });
   await page.screenshot({ path: 'test-results/example4-mobile.png', fullPage: true });
   // 检查窄屏文档宽度是否保持在视口之内。
@@ -116,6 +119,79 @@ async function typingPause({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.merchant-stats').last()).toContainText('Turn0');
 }
 
+// 验证状态感知的补全菜单按参数位置循环且仅出现一次。
+async function contextualCompletion({ page }: { page: Page }): Promise<void> {
+  await start(page);
+  const input = page.getByRole('textbox', { name: '输入内容', exact: true });
+  await input.fill('do ');
+  await input.press('Tab');
+  await expect(page.locator('.lk-completions')).toContainText('depart');
+  await expect(page.locator('.lk-completions')).not.toContainText('travel');
+  await input.press('Tab');
+  await expect(input).toHaveValue('do buy ');
+  await input.press('Tab');
+  await expect(input).toHaveValue('do depart ');
+  await input.press('Escape');
+  await input.fill('do depart ');
+  await input.press('Tab');
+  await expect(page.locator('.lk-completions')).toContainText('prism');
+  await expect(page.locator('.lk-completions')).not.toContainText('patch');
+  await input.fill('do travel ');
+  await input.press('Tab');
+  await expect(page.locator('.lk-completions')).toBeHidden();
+  await input.fill('');
+  await command(page, 'do market');
+  await expect(page.locator('.lk-output').last()).toContainText('Shield Coil');
+  await command(page, 'do equip tank');
+  await expect(page.locator('.lk-output').last()).toContainText('unavailable at this planet');
+}
+
+// 验证选择保留高度、恢复焦点，退出会话恢复主界面内容。
+async function viewAndChoices({ page }: { page: Page }): Promise<void> {
+  await page.setViewportSize({ width: 640, height: 400 });
+  await page.goto('http://127.0.0.1:4178/');
+  await command(page, 'about');
+  await command(page, 'play');
+  const slot = page.getByRole('button', { name: /Slot 1/u });
+  await expect(slot).toHaveCSS('outline-style', 'none');
+  await slot.press('Enter');
+  await expect(page.locator('.merchant-banner')).toHaveCount(0);
+  const input = page.getByRole('textbox', { name: '输入内容', exact: true });
+  await expect(input).toBeFocused();
+  await command(page, 'do depart');
+  const choices = page.locator('.lk-choices').last();
+  await expect(choices).toBeVisible();
+  await page.waitForTimeout(50);
+  const bounds = await choices.boundingBox();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(401);
+  const height = bounds!.height;
+  // 检查当前焦点选项确实位于限高列表内部。
+  function focusedVisible(): boolean {
+    const button = document.activeElement!;
+    const panel = button.closest('.lk-choices')!;
+    const bounds = button.getBoundingClientRect();
+    const parent = panel.getBoundingClientRect();
+    return bounds.top >= parent.top - 1 && bounds.bottom <= parent.bottom + 1;
+  }
+  expect(await page.evaluate(focusedVisible)).toBe(true);
+  await page.keyboard.press('End');
+  expect(await page.evaluate(focusedVisible)).toBe(true);
+  await page.keyboard.press('Home');
+  expect(await page.evaluate(focusedVisible)).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect(input).toBeFocused();
+  await expect(choices).toHaveAttribute('data-state', 'complete');
+  const after = await choices.boundingBox();
+  expect(after!.height).toBeCloseTo(height, 0);
+  await command(page, 'pause');
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
+  await page.getByRole('button', { name: 'Exit to main terminal', exact: true }).click();
+  await expect(page.locator('.merchant-banner')).toBeVisible();
+  await expect(input).toBeFocused();
+}
+
+test('example4 状态补全与商店供应', contextualCompletion);
+test('example4 会话恢复与选择平滑交接', viewAndChoices);
 test('example4 三槽保存与刷新恢复', saveAndResume);
 test('example4 事件中暂停与继续', eventPause);
 test('example4 详情和窄屏图形', visualDetails);

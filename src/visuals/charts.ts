@@ -6,6 +6,8 @@ export interface ChartOptions {
   data: readonly ChartDatum[];
   legend?: boolean;
   animate?: boolean;
+  strokeWidth?: number;
+  centerLabel?: boolean;
 }
 const namespace = 'http://www.w3.org/2000/svg';
 
@@ -49,6 +51,9 @@ function shape(svg: SVGElement, tag: string, attributes: Record<string, string |
 // 创建以黑白环段与间隙区分数值的环形饼图。
 export function createPieChart(options: ChartOptions): OutputComponent {
   const { element, svg } = container(options, 'pie');
+  svg.setAttribute('viewBox', '50 0 140 140');
+  const strokeWidth = options.strokeWidth ?? 12;
+  if (!Number.isFinite(strokeWidth) || strokeWidth < 1 || strokeWidth > 32) throw new RangeError('Invalid ring stroke width.');
   let total = 0;
   for (const datum of options.data) total += datum.value;
   if (!Number.isFinite(total)) throw new RangeError('Chart total exceeds the supported range.');
@@ -59,14 +64,16 @@ export function createPieChart(options: ChartOptions): OutputComponent {
     const value = options.data[index]!.value;
     const length = total ? value / total * circumference : 0;
     if (length > 0) shape(svg, 'circle', {
-      cx: 120, cy: 70, r: 48, fill: 'none', stroke: index % 2 ? '#fff' : '#000', 'stroke-width': 12,
+      cx: 120, cy: 70, r: 48, fill: 'none', stroke: index % 2 ? '#fff' : '#000', 'stroke-width': strokeWidth,
       'stroke-dasharray': `${Math.max(0, length - 2)} ${circumference}`, 'stroke-dashoffset': -offset,
       transform: 'rotate(-90 120 70)',
     });
     offset += length;
   }
-  const label = shape(svg, 'text', { x: 120, y: 76, 'text-anchor': 'middle', fill: '#000', 'font-size': 18 });
-  label.textContent = total ? `${Math.round((options.data[0]?.value ?? 0) / total * 100)}%` : '0%';
+  if (options.centerLabel !== false) {
+    const label = shape(svg, 'text', { x: 120, y: 76, 'text-anchor': 'middle', fill: '#000', 'font-size': 18 });
+    label.textContent = total ? `${Math.round((options.data[0]?.value ?? 0) / total * 100)}%` : '0%';
+  }
   return { element, dispose };
 }
 

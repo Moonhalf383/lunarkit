@@ -1,9 +1,9 @@
 import { renderMarkdown, typewrite } from 'lunarkit';
-import type { Choice, CommandContext, Commands } from 'lunarkit';
+import type { Choice, CommandContext, Commands, CompletionCandidate, CompletionContext, TerminalOutput, TerminalView } from 'lunarkit';
 import { eventById } from './content/events';
 import { item, items } from './content/items';
 import { distance, goods, planet, planets } from './content/planets';
-import { available, buyItem, createRun, depart, price, quantity, requireAlive, requirePort, resolveEvent, score, service, trade, travel, useItem } from './game/engine';
+import { available, buyItem, capacity, cargoCount, createRun, depart, price, quantity, requireAlive, requirePort, resolveEvent, score, service, shopItems, trade, travel, useItem } from './game/engine';
 import { createStorage } from './game/storage';
 import type { Run } from './game/types';
 import { cargoDetails, creditHistory, dashboard, itemDetails, planetDetails } from './ui/render';
@@ -14,6 +14,7 @@ export function createMerchant(storage?: Storage) {
   let active: Run | null = null;
   let slot = 0;
   let paused = false;
+  let gameView: TerminalView | undefined;
 
   // 生成带当前港口或航行状态的消费端标签。
   function prompt(): string {
@@ -45,10 +46,13 @@ export function createMerchant(storage?: Storage) {
     if (!active?.ended) return false;
     const value = score(active);
     saves.record({ id: active.id, turn: active.turn, score: value, routes: active.routes, date: new Date().toISOString() });
-    context.write(`VOYAGE ENDED — ${active.turn} turns · ${active.routes} routes · score ${value}. Use fetch for history or play for another voyage.`);
+    const result = `VOYAGE ENDED — ${active.turn} turns · ${active.routes} routes · score ${value}. Use fetch for history or play for another voyage.`;
     active = null;
     paused = false;
+    gameView?.close();
+    gameView = undefined;
     update(context);
+    context.write(result);
     return true;
   }
   // 读取三槽选择，已保存槽位提供继续或确认新局。
@@ -71,6 +75,7 @@ export function createMerchant(storage?: Storage) {
       }
     }
     context.signal.throwIfAborted();
+    gameView = context.openView();
     slot = selected;
     active = next ?? createRun();
     paused = false;
@@ -98,6 +103,8 @@ export function createMerchant(storage?: Storage) {
         if (confirmation === 'exit') {
           active = null;
           paused = false;
+          gameView?.close();
+          gameView = undefined;
           update(context);
           context.write('Returned to the main terminal. Your last explicit save is available in play.');
         }
@@ -109,20 +116,34 @@ export function createMerchant(storage?: Storage) {
     const query = context.args.join(' ').toLowerCase();
     if (query === 'history' || query === 'cargo') {
       const current = run(true);
-      context.write(query === 'history' ? creditHistory(current) : cargoDetails(current));
+      await animatedOutput(context, query === 'history' ? creditHistory(current) : cargoDetails(current));
       return;
     }
     if (query) {
-      for (const world of planets) if (world.id === query || world.name.toLowerCase() === query) { context.write(planetDetails(world, active ?? undefined)); return; }
+      for (const world of planets) if (world.id === query || world.name.toLowerCase() === query) { await animatedOutput(context, planetDetails(world, active ?? undefined)); return; }
       await itemDetails(item(query), context);
       return;
     }
-    if (active) { context.write(dashboard(active)); return; }
+    if (active) { await animatedOutput(context, dashboard(active)); return; }
     const history = saves.history();
-    if (!history.length) context.write('No completed voyages yet. Use play to launch your first ship.');
-    for (const entry of history) context.write(`${entry.date.slice(0, 10)} · ${entry.turn} turns · ${entry.routes} routes · score ${entry.score}`);
-    if (saves.getWarning()) context.write(saves.getWarning());
+    let text = history.length ? '' : 'No completed voyages yet. Use play to launch your first ship.';
+    for (const entry of history) text += `${entry.date.slice(0, 10)} · ${entry.turn} turns · ${entry.routes} routes · score ${entry.score}\n`;
+    if (saves.getWarning()) text += `\n${saves.getWarning()}`;
+    await animatedOutput(context, text);
   }
+  // 统一为所有 fetch 分支逐字揭示文字并保留动态渲染组件。
+  async function animatedOutput(context: CommandContext, output: TerminalOutput): Promise<void> {
+    if (typeof output === 'string') {
+      const element = document.createElement('div');
+      element.textContent = output;
+      context.write(element);
+      await typewrite({ element, signal: context.signal, interval: 3 });
+    } else {
+      context.write(output);
+      await typewrite({ element: 'element' in output ? output.element : output, signal: context.signal, interval: 3 });
+    }
+  }
+
   // 罗列当前阶段实际可用的动作及明确的参数格式。
   function actions(context: CommandContext): void {
     const current = run();
@@ -161,7 +182,7 @@ export function createMerchant(storage?: Storage) {
     context.write(`${planet(current.location).name.toUpperCase()} MARKET — buy / sell / owned`);
     for (const good of goods) context.write(`${good.id.padEnd(10)} ${String(price(current, good.id)).padStart(4)} / ${String(price(current, good.id, false)).padStart(4)} / ${current.cargo[good.id] ?? 0}`);
     context.write('EQUIPMENT — use do equip <id>');
-    for (const entry of items) context.write(`${entry.id.padEnd(10)} ${Math.floor(entry.price * (current.items.includes('broker') ? 0.92 : 1))} credits · ${entry.name}`);
+    for (const entry of shopItems(current.location)) context.write(`${entry.id.padEnd(10)} ${Math.floor(entry.price * (current.items.includes('broker') ? 0.92 : 1))} credits · ${entry.name}`);
   }
   // 执行与当前事件状态匹配的具体子命令。
   async function act(context: CommandContext): Promise<void> {
@@ -189,6 +210,7 @@ export function createMerchant(storage?: Storage) {
       context.write(`${command === 'use' ? 'Used' : 'Discarded'} ${item(id).name}.`);
     } else if (current.pending) throw new Error('Resolve the current event first: do resolve.');
     else if (command === 'travel') {
+      if (first) throw new Error('Usage: do travel. Choose the destination with do depart <planet>.');
       context.write(travel(current));
       update(context);
       if (!finish(context)) await resolve(context);
@@ -222,7 +244,7 @@ export function createMerchant(storage?: Storage) {
       let id = first;
       if (!id) {
         const choices: Choice[] = [];
-        for (const entry of items) choices.push({ value: entry.id, label: `${entry.name} · ${entry.price} credits` });
+        for (const entry of shopItems(current.location)) choices.push({ value: entry.id, label: `${entry.name} · ${entry.price} credits` });
         id = await select(context, 'Choose an item to buy', choices);
       }
       buyItem(current, id);
@@ -230,19 +252,75 @@ export function createMerchant(storage?: Storage) {
     } else throw new Error(`Unknown action: ${command}. Use do for available actions.`);
     update(context);
   }
-  // 提供稳定的消费端命令与参数候选。
-  function complete(): readonly string[] {
-    const names: string[] = ['history', 'cargo'];
-    for (const world of planets) names.push(world.id);
-    for (const entry of items) names.push(entry.id);
-    for (const good of goods) names.push(good.id);
-    for (const action of ['market', 'buy', 'sell', 'depart', 'travel', 'resolve', 'refuel', 'repair', 'equip', 'use', 'discard']) names.push(action);
-    return names;
+  // 查询候选仅包括图表、星球和道具，保留独立信息概要。
+  function completeFetch({ args }: CompletionContext): readonly CompletionCandidate[] {
+    if (args.length) return [];
+    const result: CompletionCandidate[] = [];
+    if (active) result.push({ value: 'history', description: 'Credit history' }, { value: 'cargo', description: 'Cargo manifest' });
+    for (const world of planets) result.push({ value: world.id, description: world.description });
+    for (const entry of items) result.push({ value: entry.id, description: entry.name });
+    return result;
+  }
+  // 按阶段和参数位置构造可执行候选，游戏内容留在消费端。
+  function completeDo({ args }: CompletionContext): readonly CompletionCandidate[] {
+    if (!active || paused || active.ended) return [];
+    const current = active;
+    const usable: CompletionCandidate[] = [];
+    for (const id of current.items) {
+      if (item(id).consumable) usable.push({ value: id, description: item(id).name });
+    }
+    const discards: CompletionCandidate[] = [];
+    for (const id of current.items) if (!['tank', 'plating', 'hold'].includes(id)) discards.push({ value: id, description: item(id).name });
+    const actions: CompletionCandidate[] = [];
+    if (usable.length) actions.push({ value: 'use', description: 'Activate a carried consumable' });
+    if (discards.length) actions.push({ value: 'discard', description: 'Release an item slot' });
+    if (current.pending) actions.push({ value: 'resolve', description: 'Choose an event action' });
+    else if (current.destination) actions.push({ value: 'travel', description: 'Advance one travel turn' });
+    else {
+      actions.push({ value: 'market', description: 'Show local cargo and three equipment offers' }, { value: 'depart', description: 'Choose the next planet' });
+      let canBuy = false;
+      for (const good of goods) if (price(current, good.id) <= current.credits) canBuy = true;
+      if (canBuy && cargoCount(current) < capacity(current, 'cargo')) actions.push({ value: 'buy', description: 'Buy local cargo' });
+      if (cargoCount(current)) actions.push({ value: 'sell', description: 'Sell carried cargo' });
+      if (current.fuel < capacity(current, 'fuel') && current.credits >= 3) actions.push({ value: 'refuel', description: 'Fuel costs 3 credits per unit' });
+      if (current.hull < capacity(current, 'hull') && current.credits >= 4) actions.push({ value: 'repair', description: 'Repair costs 4 credits per unit' });
+      let canEquip = false;
+      for (const entry of shopItems(current.location)) {
+        const cost = Math.floor(entry.price * (current.items.includes('broker') ? 0.92 : 1));
+        if (cost <= current.credits && (entry.consumable || !current.items.includes(entry.id))) canEquip = true;
+      }
+      if (current.items.length < 6 && canEquip) actions.push({ value: 'equip', description: 'Buy one of three local items' });
+    }
+    if (!args.length) return actions;
+    if (args.length > 1) return [];
+    const action = args[0];
+    if (action === 'use') return usable;
+    if (action === 'discard') return discards;
+    if (current.pending && action === 'resolve') {
+      const result: CompletionCandidate[] = [{ value: 'endure', description: 'Wait out danger: lose 12 hull' }];
+      for (const option of eventById(current.pending).options) if (available(current, option)) result.push({ value: option.id, description: option.label });
+      return result;
+    }
+    if (current.pending || current.destination) return [];
+    const result: CompletionCandidate[] = [];
+    if (action === 'depart') for (const world of planets) {
+      if (world.id !== current.location) result.push({ value: world.id, description: `${distance(current.location, world.id)} distance · ${world.specialty}` });
+    }
+    if (action === 'buy' || action === 'sell') for (const good of goods) {
+      if (action === 'sell' && !(current.cargo[good.id] ?? 0)) continue;
+      if (action === 'buy' && price(current, good.id) > current.credits) continue;
+      result.push({ value: good.id, description: `${good.name} · ${price(current, good.id, action === 'buy')} credits` });
+    }
+    if (action === 'equip' && current.items.length < 6) for (const entry of shopItems(current.location)) {
+      if ((!entry.consumable && current.items.includes(entry.id)) || current.credits < Math.floor(entry.price * (current.items.includes('broker') ? 0.92 : 1))) continue;
+      result.push({ value: entry.id, description: `${entry.name} · ${entry.price} credits` });
+    }
+    return result;
   }
   const commands: Commands = {
     help: { description: 'Commands and voyage rules.', run: help }, about: { description: 'About LuanrMerchant.', run: about },
     play: { description: 'Choose one of three save slots.', run: play }, pause: { description: 'Save, exit, or continue.', run: pause, interruptRunning: true },
-    fetch: { description: 'Ship, history, planet, or item details.', run: fetch, complete }, do: { description: 'Take an available action.', run: act, complete },
+    fetch: { description: 'Ship, history, planet, or item details.', run: fetch, complete: completeFetch }, do: { description: 'Take an available action.', run: act, complete: completeDo },
   };
   return { commands, prompt };
 }

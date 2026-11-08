@@ -63,7 +63,13 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
         if (active !== controller || !interaction?.choose) return Promise.reject(new Error('Interactive choices unavailable.'));
         return interaction.choose(options, controller.signal);
       }
-      await command.run({ args, signal: controller.signal, write: guardedWrite, read, choose, present, setPrompt });
+      // 会话视图只能由仍有效的命令创建。
+      function openView() {
+        controller.signal.throwIfAborted();
+        if (active !== controller || !interaction?.openView) throw new Error('Terminal views unavailable.');
+        return interaction.openView();
+      }
+      await command.run({ args, signal: controller.signal, write: guardedWrite, read, choose, present, setPrompt, openView });
     } catch (error) {
       guardedWrite(error instanceof Error ? error.message : String(error));
     } finally {

@@ -1,4 +1,4 @@
-import type { Commands, TerminalOutput } from '../commands/types.js';
+import type { Commands, TerminalOutput, TerminalView } from '../commands/types.js';
 
 export interface TerminalOptions {
   element: HTMLElement;
@@ -18,5 +18,6 @@ export interface Terminal {
   focus: () => void;
   interrupt: () => void;
   setPrompt: (text: string) => void;
+  openView: () => TerminalView;
   destroy: () => void;
 }

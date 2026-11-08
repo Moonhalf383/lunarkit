@@ -1,4 +1,4 @@
-import { createTerminal, createTextFiles, createPieChart, createBarChart, createLineChart, createProgressBar, createRotatingModel, renderMarkdown, showLoading, typewrite } from 'lunarkit';
+import { createIcon, createTerminal, createTextFiles, createPieChart, createBarChart, createLineChart, createProgressBar, createRotatingModel, renderMarkdown, showLoading, typewrite } from 'lunarkit';
 import type { CommandContext, Commands, CompletionContext, InteractivePanel, TerminalOptions } from 'lunarkit';
 import 'lunarkit/style.css';
 
@@ -12,6 +12,11 @@ const options: TerminalOptions = {
 
 const terminal = createTerminal(options);
 terminal.write('消费接口类型验证');
+const iconOutput = document.createElement('span');
+iconOutput.append(createIcon('box', { label: 'Box', size: 24 }));
+terminal.write(iconOutput);
+const view = terminal.openView();
+view.close();
 terminal.focus();
 terminal.destroy();
 
@@ -43,6 +48,8 @@ const panel: InteractivePanel = { element: document.createElement('section'), cl
 
 // 验证交互提问、面板及渲染工具的构建声明。
 async function interactive(context: CommandContext): Promise<void> {
+  const view = context.openView();
+  view.close();
   const answer = await context.read({ prompt: 'Name:', secret: true });
   await context.choose({ prompt: 'Choose:', choices: [{ label: 'One', value: 'one' }] });
   const document = renderMarkdown('# Animated');

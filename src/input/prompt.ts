@@ -1,5 +1,6 @@
 import type { CompletionResult } from '../commands/types.js';
 import { updateCaret } from './caret.js';
+import { createCompletionMenu } from './completions.js';
 import { createInputHistory } from './history.js';
 
 export interface PromptController {
@@ -7,6 +8,8 @@ export interface PromptController {
   focus: () => void;
   destroy: () => void;
   clear: () => string;
+  getDraft: () => string;
+  setDraft: (text: string) => void;
   setLabel: (text: string) => void;
   setSecret: (secret: boolean) => void;
   setVisible: (visible: boolean, focusInput?: boolean) => void;
@@ -46,6 +49,13 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   input.spellcheck = false;
   input.rows = 1;
   const history = createInputHistory();
+  // 插入补全并保持编辑器光标与文本镜像同步。
+  function applyCompletion(text: string, cursor: number): void {
+    input.value = text;
+    input.setSelectionRange(cursor, cursor);
+    render();
+  }
+  const completions = createCompletionMenu(document, input, applyCompletion);
   // 输入法组合期间的回车交给浏览器确认候选词。
   let composing = false;
   // 密码输入只留在原生输入值中，镜像和光标位置保持空白。
@@ -102,6 +112,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
 
   // 清空草稿与历史浏览状态，并返回取消前的原文。
   function clear(): string {
+    completions.clear();
     const text = input.value;
     history.reset();
     restore('');
@@ -109,24 +120,28 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     return text;
   }
 
-  // 处理命令补全并将歧义候选追加到流中。
-  function complete(): void {
-    try {
-      const result = actions.complete?.(input.value, input.selectionEnd);
-      if (!result) return;
-      input.value = result.text;
-      input.setSelectionRange(result.cursor, result.cursor);
-      render();
-      if (result.candidates.length) actions.suggest?.(result.candidates);
-    } catch {
-      render();
-    }
+  // 临时菜单只修改输入草稿，候选不会写入输出流。
+  function complete(reverse = false): void {
+    try { completions.complete(getCompletions, reverse); }
+    catch { completions.clear(); }
+  }
+
+  // 在首次 Tab 时获取消费端当前阶段的候选快照。
+  function getCompletions(): CompletionResult {
+    return actions.complete!(input.value, input.selectionEnd);
+  }
+
+  // 原生编辑使旧补全候选失效。
+  function handleInput(): void {
+    completions.clear();
+    handleActivity();
   }
 
   // 处理提交、命令控制与上下历史导航。
   function handleKeydown(event: KeyboardEvent): void {
     markActivity();
     if (composing || event.isComposing || event.keyCode === 229) return;
+    if (event.key !== 'Tab') completions.clear();
     if (event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'c' && actions.interrupt) {
       const selection = document.getSelection();
       if (!secret && (input.selectionStart !== input.selectionEnd || (selection && !selection.isCollapsed))) return;
@@ -134,9 +149,9 @@ export function createPrompt(document: Document, label: string, actions: PromptA
       actions.interrupt(clear());
     } else if (actions.isReading?.() && event.key === 'Tab') {
       if (!event.shiftKey) event.preventDefault();
-    } else if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && actions.complete) {
+    } else if (event.key === 'Tab' && (!event.shiftKey || !completions.element.hidden) && !event.ctrlKey && !event.metaKey && !event.altKey && actions.complete) {
       event.preventDefault();
-      complete();
+      complete(event.shiftKey);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       if (actions.isBusy?.() && !actions.isReading?.() && !actions.canInterrupt?.(input.value)) return;
@@ -195,6 +210,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   // 在流内面板接管键盘期间暂停显示输入行。
   function setVisible(visible: boolean, focusInput = true): void {
     if (disposed) return;
+    if (!visible) completions.clear();
     element.hidden = !visible;
     input.disabled = !visible;
     if (visible && focusInput) focus();
@@ -220,7 +236,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     input.removeEventListener('cut', protectSecret);
     input.removeEventListener('focus', handleActivity);
     input.removeEventListener('blur', stopBlinking);
-    input.removeEventListener('input', handleActivity);
+    input.removeEventListener('input', handleInput);
     input.removeEventListener('select', handleActivity);
     input.removeEventListener('keydown', handleKeydown);
     input.removeEventListener('compositionstart', beginComposition);
@@ -232,7 +248,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   input.addEventListener('cut', protectSecret);
   input.addEventListener('focus', handleActivity);
   input.addEventListener('blur', stopBlinking);
-  input.addEventListener('input', handleActivity);
+  input.addEventListener('input', handleInput);
   input.addEventListener('select', handleActivity);
   input.addEventListener('keydown', handleKeydown);
   input.addEventListener('compositionstart', beginComposition);
@@ -241,7 +257,9 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   document.fonts?.addEventListener('loadingdone', render);
   observer?.observe(editor);
   editor.append(mirror, input, caret);
-  element.append(prefix, editor);
+  element.append(prefix, editor, completions.element);
   render();
-  return { element, focus, destroy, clear, setLabel, setSecret, setVisible };
+  // 返回公开草稿，秘密回答始终留在当前输入行。
+  function getDraft(): string { return secret ? '' : input.value; }
+  return { element, focus, destroy, clear, getDraft, setDraft: restore, setLabel, setSecret, setVisible };
 }

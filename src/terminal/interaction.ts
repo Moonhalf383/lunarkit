@@ -73,6 +73,7 @@ export function createInteraction(
       return Promise.reject(new Error('An interaction is already active.'));
     }
     panelActive = true;
+    panel.element.dataset.scroll = panel.scroll ?? 'focus';
     activeElement = panel.element;
     return new Promise<void>(wait);
     // 等待面板关闭或命令取消。

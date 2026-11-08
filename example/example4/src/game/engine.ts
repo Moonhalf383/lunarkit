@@ -1,5 +1,5 @@
 import { distance, goods, planet, planets } from '../content/planets';
-import { item } from '../content/items';
+import { item, items } from '../content/items';
 import { eventById, events } from '../content/events';
 import type { Effect, EventOption, Run, Snapshot } from './types';
 
@@ -188,10 +188,20 @@ export function resolveEvent(run: Run, action: string): string {
   return `${event.name}: ${selected.label}.${risk ? ' The risk materialized.' : ' Action complete.'}`;
 }
 
-// 在港口购买道具，检查槽位与被动装备重复。
+// 每颗星球固定供应三种装备，各星球共同覆盖全部道具。
+export function shopItems(location: string) {
+  const world = planet(location);
+  const index = planets.indexOf(world);
+  return [items[(index * 2) % items.length]!, items[(index * 2 + 1) % items.length]!, items[(index * 2 + 2) % items.length]!];
+}
+
+// 在港口购买道具，检查供应、槽位与被动装备重复。
 export function buyItem(run: Run, id: string): void {
   requirePort(run);
   const entry = item(id);
+  let stocked = false;
+  for (const stock of shopItems(run.location)) if (stock.id === entry.id) stocked = true;
+  if (!stocked) throw new Error(`${entry.name} is unavailable at this planet. Use do market for local stock.`);
   const cost = Math.floor(entry.price * (run.items.includes('broker') ? 0.92 : 1));
   if (run.items.length >= 6) throw new Error('All six item slots are occupied. Use or discard an item first.');
   if (!entry.consumable && run.items.includes(entry.id)) throw new Error('This equipment is already installed.');

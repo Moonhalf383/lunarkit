@@ -13,6 +13,8 @@ export function typewrite({ element, signal, interval = 12 }: TypewriteOptions):
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   let node = walker.nextNode();
   while (node) {
+    const parent = node.parentElement;
+    if (parent?.closest('svg, [data-transient="true"]')) { node = walker.nextNode(); continue; }
     const text = node.textContent ?? '';
     const graphemes: string[] = [];
     for (const part of segmenter.segment(text)) graphemes.push(part.segment);
@@ -20,7 +22,10 @@ export function typewrite({ element, signal, interval = 12 }: TypewriteOptions):
     node = walker.nextNode();
   }
   if (!interval || element.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+  const visuals = element.querySelectorAll<HTMLElement | SVGElement>('svg, [data-transient="true"]');
+  for (const visual of visuals) visual.style.visibility = 'hidden';
   for (const entry of nodes) entry.node.data = '';
+  element.dataset.typing = 'true';
   return new Promise<void>(wait);
 
   // 托管逐字计时和取消监听，完成后归还原始可读结构。
@@ -33,12 +38,16 @@ export function typewrite({ element, signal, interval = 12 }: TypewriteOptions):
       clearTimeout(timer);
       signal.removeEventListener('abort', abort);
       for (const entry of nodes) entry.node.data = entry.text;
+      for (const visual of visuals) visual.style.removeProperty('visibility');
+      delete element.dataset.typing;
     }
     // 响应命令取消并交还调用方。
     function abort(): void { cleanup(); reject(signal.reason); }
     // 逐个完整字素输出，保留链接和标题等既有节点。
     function tick(): void {
       if (index >= nodes.length) { cleanup(); resolve(); return; }
+      const visibleCount = Math.ceil(index / Math.max(1, nodes.length) * visuals.length);
+      for (let visual = 0; visual < visibleCount; visual += 1) visuals[visual]!.style.removeProperty('visibility');
       const entry = nodes[index]!;
       entry.node.data += entry.graphemes[character] ?? '';
       character += 1;

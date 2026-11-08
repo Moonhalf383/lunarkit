@@ -1,5 +1,5 @@
-import { createBarChart, createLineChart, createPieChart, createProgressBar, createRotatingModel, renderMarkdown, typewrite } from 'lunarkit';
-import type { CommandContext, OutputComponent } from 'lunarkit';
+import { createIcon, createBarChart, createLineChart, createPieChart, createProgressBar, createRotatingModel, renderMarkdown, typewrite } from 'lunarkit';
+import type { CommandContext, IconName, OutputComponent } from 'lunarkit';
 import { goods, planet } from '../content/planets';
 import { item } from '../content/items';
 import { capacity, cargoCount, score } from '../game/engine';
@@ -27,9 +27,9 @@ function composite(element: HTMLElement, components: OutputComponent[]): OutputC
 export function dashboard(run: Run): OutputComponent {
   const { element, left, right } = columns('merchant-dashboard');
   const components: OutputComponent[] = [];
-  const model = createRotatingModel({ label: 'Merchant ship rotating in space', mesh: ship, columns: 48, rows: 24 });
-  const fuel = createPieChart({ label: 'Fuel', data: [{ label: 'Available', value: run.fuel }, { label: 'Used', value: capacity(run, 'fuel') - run.fuel }], legend: false });
-  const hull = createPieChart({ label: 'Hull', data: [{ label: 'Intact', value: run.hull }, { label: 'Damage', value: capacity(run, 'hull') - run.hull }], legend: false });
+  const model = createRotatingModel({ label: 'Merchant ship rotating in space', mesh: ship, columns: 48, rows: 24, light: [-0.6, 0.8, 1] });
+  const fuel = createPieChart({ label: `Fuel ${run.fuel}/${capacity(run, 'fuel')}`, centerLabel: false, strokeWidth: 24, data: [{ label: 'Available', value: run.fuel }, { label: 'Used', value: capacity(run, 'fuel') - run.fuel }], legend: false });
+  const hull = createPieChart({ label: `Hull ${run.hull}/${capacity(run, 'hull')}`, centerLabel: false, strokeWidth: 24, data: [{ label: 'Intact', value: run.hull }, { label: 'Damage', value: capacity(run, 'hull') - run.hull }], legend: false });
   components.push(model, fuel, hull);
   const rings = document.createElement('div');
   rings.className = 'merchant-rings';
@@ -112,33 +112,18 @@ export function planetDetails(world: Planet, run?: Run): OutputComponent {
   const text = document.createElement('div');
   text.append(renderMarkdown(`# ${world.name}\n${world.description}\n\n**Specialty:** ${world.specialty}\n\n**Coordinates:** ${world.x}, ${world.y}${run ? `\n\n**Market index:** ${run.markets[world.id]![world.specialty]}` : ''}`));
   left.append(text);
-  const model = createRotatingModel({ label: `Rotating planet ${world.name}`, mesh: sphere(world.x) });
+  const model = createRotatingModel({ label: `Rotating planet ${world.name}`, mesh: sphere(world.x), background: 'dark', light: [-1, 0.4, 0.2] });
   right.append(model.element);
   return composite(element, [model]);
 }
 
 // 将同风格的单色几何符号作为每件道具的图标。
 export function icon(entry: Item): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 48 48');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.classList.add('merchant-icon');
-  const paths: Record<string, string> = {
-    cross: 'M19 6H29V19H42V29H29V42H19V29H6V19H19Z',
-    battery: 'M15 8H33V40H15ZM20 3H28V8M24 15V33M19 24H29',
-    shield: 'M24 4L40 12V25L24 44L8 25V12ZM16 23L22 29L33 17',
-    ring: 'M24 5A19 19 0 1 0 24 43A19 19 0 1 0 24 5M24 15A9 9 0 1 0 24 33A9 9 0 1 0 24 15',
-    arrow: 'M24 3L42 38L24 30L6 38ZM24 16V29',
-    box: 'M6 12L24 4L42 12V36L24 44L6 36ZM6 12L24 20L42 12M24 20V44',
-    diamond: 'M24 3L43 24L24 45L5 24ZM13 24H35M24 12V36',
-    star: 'M24 2L29 17L45 18L33 28L37 44L24 35L11 44L15 28L3 18L19 17Z',
+  const names: Record<string, IconName> = {
+    patch: 'plus', cell: 'battery', shield: 'shield', scoop: 'radar', engine: 'rocket', tank: 'fuel', plating: 'layers', hold: 'box', broker: 'badge', ledger: 'book', scanner: 'scan', beacon: 'beacon', drone: 'tool', magnet: 'magnet', filter: 'filter', ration: 'package', flare: 'star', coolant: 'snowflake', map: 'map', charm: 'gem',
   };
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', paths[entry.icon] ?? paths.box!);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', '#000');
-  path.setAttribute('stroke-width', '2');
-  svg.append(path);
+  const svg = createIcon(names[entry.id] ?? 'box', { size: 40 });
+  svg.classList.add('merchant-icon');
   return svg;
 }
 
@@ -153,5 +138,5 @@ export async function itemDetails(entry: Item, context: CommandContext): Promise
   const body = renderMarkdown(entry.description);
   element.append(header, body);
   context.write(element);
-  await typewrite({ element: body, signal: context.signal, interval: 5 });
+  await typewrite({ element, signal: context.signal, interval: 3 });
 }

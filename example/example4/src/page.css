@@ -12,8 +12,8 @@ body { min-width: 280px; }
 }
 .merchant-dashboard > div:first-child { display: grid; justify-items: center; gap: 8px; }
 .merchant-dashboard .lk-model { width: 48ch; font-size: 10px; line-height: 1; }
-.merchant-rings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 260px; text-align: center; }
-.merchant-rings .lk-chart svg { height: 86px; }
+.merchant-rings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 300px; text-align: center; }
+.merchant-rings .lk-chart svg { height: 140px; }
 .merchant-rings .lk-chart figcaption { font-size: 12px; line-height: 20px; }
 .merchant-section-title { font: inherit; font-size: 12px; line-height: 20px; margin: 0 0 8px; }
 .merchant-stats { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 24px; margin: 0; font: inherit; font-size: 14px; line-height: 24px; }
@@ -28,12 +28,13 @@ body { min-width: 280px; }
 .merchant-item { margin-block: 1em; }
 .merchant-item header { display: flex; gap: 1em; align-items: center; }
 .merchant-item h2 { font-size: clamp(24px, 4vw, 40px); font-weight: 500; margin: 0; line-height: 1.1; }
-.merchant-icon { width: 48px; height: 48px; flex: none; }
+.merchant-icon { width: 40px; height: 40px; flex: none; }
 .merchant-item .lk-markdown h1 { font-size: 1.15em; }
 @media (max-width: 760px) {
   .merchant-dashboard { grid-template-columns: 240px minmax(0, 1fr); gap: 20px; }
   .merchant-dashboard .lk-model { font-size: 8px; }
-  .merchant-rings { width: 220px; }
+  .merchant-rings { width: 240px; }
+  .merchant-rings .lk-chart svg { height: 120px; }
   .merchant-stats { gap: 0 12px; font-size: 13px; }
 }
 @media (max-width: 560px) {
@@ -44,4 +45,5 @@ body { min-width: 280px; }
   .merchant-stats { grid-template-columns: 1fr 1fr; font-size: 14px; }
   .merchant-planet > div:first-child { text-align: right; }
   .merchant-planet .lk-model { font-size: 7px; }
+  .merchant-rings { width: 260px; }
 }

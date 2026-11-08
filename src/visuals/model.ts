@@ -10,6 +10,8 @@ export interface ModelOptions {
   rows?: number;
   speed?: number;
   animate?: boolean;
+  background?: 'light' | 'dark';
+  light?: Vertex3D;
 }
 
 // 以带深度缓冲的三角形投影绘制粗分辨率旋转模型。
@@ -23,6 +25,7 @@ export function createRotatingModel(options: ModelOptions): OutputComponent {
   if (!Number.isFinite(options.speed ?? 1)) throw new RangeError('Invalid rotation speed.');
   const element = document.createElement('pre');
   element.className = 'lk-model';
+  if (options.background === 'dark') element.classList.add('lk-model-dark');
   element.dataset.transient = 'true';
   element.setAttribute('role', 'img');
   element.setAttribute('aria-label', options.label);
@@ -37,11 +40,14 @@ export function createRotatingModel(options: ModelOptions): OutputComponent {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
     const points: [number, number, number][] = [];
+    const rotated: [number, number, number][] = [];
     for (const [x, y, z] of mesh.vertices) {
       const rx = (x * c + z * s) / radius;
       const rz = (-x * s + z * c) / radius;
       const ry = y / radius * 0.94 - rz * 0.34;
-      points.push([columns / 2 + rx * columns * 0.43, rows / 2 - ry * rows * 0.43, rz]);
+      const depth = y / radius * 0.34 + rz * 0.94;
+      rotated.push([rx, ry, depth]);
+      points.push([columns / 2 + rx * columns * 0.43, rows / 2 - ry * rows * 0.43, depth]);
     }
     const depths = new Float64Array(columns * rows).fill(-Infinity);
     const characters = new Array<string>(columns * rows).fill(' ');
@@ -51,7 +57,21 @@ export function createRotatingModel(options: ModelOptions): OutputComponent {
       const d = points[ic]!;
       const area = (b[1] - d[1]) * (a[0] - d[0]) + (d[0] - b[0]) * (a[1] - d[1]);
       if (Math.abs(area) < 0.001) continue;
-      const shade = ramp[Math.min(ramp.length - 1, 2 + Math.round(Math.abs(area) / (columns * rows) * 40))]!;
+      let illumination = Math.min(1, 0.25 + Math.abs(area) / (columns * rows) * 4);
+      if (options.light) {
+        const va = rotated[ia]!;
+        const vb = rotated[ib]!;
+        const vc = rotated[ic]!;
+        const u = [vb[0] - va[0], vb[1] - va[1], vb[2] - va[2]];
+        const v = [vc[0] - va[0], vc[1] - va[1], vc[2] - va[2]];
+        let nx = u[1]! * v[2]! - u[2]! * v[1]!;
+        let ny = u[2]! * v[0]! - u[0]! * v[2]!;
+        let nz = u[0]! * v[1]! - u[1]! * v[0]!;
+        if (nx * va[0] + ny * va[1] + nz * va[2] < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        const scale = Math.hypot(nx, ny, nz) * Math.hypot(...options.light);
+        illumination = scale ? Math.max(0, (nx * options.light[0] + ny * options.light[1] + nz * options.light[2]) / scale) : 0;
+      }
+      const shade = ramp[Math.round(illumination * (ramp.length - 1))]!;
       for (let y = Math.max(0, Math.floor(Math.min(a[1], b[1], d[1]))); y <= Math.min(rows - 1, Math.ceil(Math.max(a[1], b[1], d[1]))); y += 1) {
         for (let x = Math.max(0, Math.floor(Math.min(a[0], b[0], d[0]))); x <= Math.min(columns - 1, Math.ceil(Math.max(a[0], b[0], d[0]))); x += 1) {
           const u = ((b[1] - d[1]) * (x - d[0]) + (d[0] - b[0]) * (y - d[1])) / area;

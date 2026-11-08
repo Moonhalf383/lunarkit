@@ -95,7 +95,15 @@ async function completionAndHistory({ page }: { page: Page }): Promise<void> {
   await input.fill('cat ');
   await input.press('Tab');
   await expect(input).toHaveValue('cat ');
-  await expect(page.locator('.lk-output').last()).toHaveText('docs/  empty.txt  hello world.txt  readme.txt');
+  await expect(page.locator('.lk-completions [role="option"]')).toHaveCount(4);
+  const count = await page.locator('.lk-stream > *').count();
+  await input.press('Tab');
+  await expect(input).toHaveValue('cat docs/');
+  await input.press('Tab');
+  await expect(input).toHaveValue('cat empty.txt ');
+  expect(await page.locator('.lk-stream > *').count()).toBe(count);
+  await input.press('Escape');
+  await expect(page.locator('.lk-completions')).toBeHidden();
 }
 
 // 验证 Ctrl+C 取消草稿、保护选区复制及打断惰性文件读取。

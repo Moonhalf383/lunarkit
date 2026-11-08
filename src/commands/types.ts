@@ -1,3 +1,12 @@
+export interface TerminalView {
+  close: () => void;
+}
+
+export interface CompletionCandidate {
+  value: string;
+  description?: string;
+}
+
 export interface OutputComponent {
   element: HTMLElement;
   dispose: () => void;
@@ -27,6 +36,7 @@ export interface InteractivePanel {
   closed: Promise<void>;
   focus: () => void;
   dispose: () => void;
+  scroll?: 'end' | 'focus';
 }
 
 export interface CommandInteraction {
@@ -34,6 +44,7 @@ export interface CommandInteraction {
   present: (panel: InteractivePanel, signal: AbortSignal) => Promise<void>;
   choose?: (options: ChooseOptions, signal: AbortSignal) => Promise<string>;
   setPrompt: (text: string) => void;
+  openView?: () => TerminalView;
 }
 
 export interface CommandContext {
@@ -44,6 +55,7 @@ export interface CommandContext {
   present: (panel: InteractivePanel) => Promise<void>;
   choose: (options: ChooseOptions) => Promise<string>;
   setPrompt: (text: string) => void;
+  openView: () => TerminalView;
 }
 
 export interface CompletionContext {
@@ -55,7 +67,7 @@ export interface Command {
   description: string;
   interruptRunning?: boolean;
   run: (context: CommandContext) => void | Promise<void>;
-  complete?: (context: CompletionContext) => readonly string[];
+  complete?: (context: CompletionContext) => readonly (string | CompletionCandidate)[];
 }
 
 export type Commands = Readonly<Record<string, Command>>;
@@ -64,4 +76,6 @@ export interface CompletionResult {
   text: string;
   cursor: number;
   candidates: readonly string[];
+  options?: readonly CompletionCandidate[];
+  replacements?: readonly { text: string; cursor: number }[];
 }

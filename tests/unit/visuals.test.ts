@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createBarChart, createLineChart, createPieChart, createProgressBar, createRotatingModel, typewrite } from '../../src/index';
+import { createIcon, createBarChart, createLineChart, createPieChart, createProgressBar, createRotatingModel, typewrite } from '../../src/index';
 import { createChoices } from '../../src/input/choices';
 import type { Mesh3D } from '../../src/index';
 
@@ -62,6 +62,24 @@ function model(): void {
   component.dispose();
 }
 
+// 验证图标语义及打字机保留动态模型节点的独立渲染。
+async function iconsAndModels(): Promise<void> {
+  const icon = createIcon('shield', { size: 32, label: 'Shield' });
+  expect(icon.getAttribute('aria-label')).toBe('Shield');
+  expect(icon.getAttribute('width')).toBe('32');
+  vi.useFakeTimers();
+  const element = document.createElement('div');
+  element.innerHTML = '<pre data-transient="true">MODEL</pre><p>Hi</p>';
+  const controller = new AbortController();
+  const typing = typewrite({ element, signal: controller.signal, interval: 10 });
+  expect(element.querySelector('pre')!.textContent).toBe('MODEL');
+  await vi.runAllTimersAsync();
+  await typing;
+  expect(element.querySelector('pre')!.textContent).toBe('MODEL');
+  expect(element.querySelector('p')!.textContent).toBe('Hi');
+  expect(element.hasAttribute('data-typing')).toBe(false);
+}
+
 // 组织通用流内组件回归测试。
 function suite(): void {
   afterEach(cleanup);
@@ -69,5 +87,6 @@ function suite(): void {
   it('打字机字素和取消', typing);
   it('图形数值和动画配置', charts);
   it('三维投影与释放', model);
+  it('图标和动态模型打字机隔离', iconsAndModels);
 }
 describe('stream visuals', suite);

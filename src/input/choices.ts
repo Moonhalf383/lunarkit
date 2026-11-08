@@ -5,6 +5,7 @@ export function createChoices(options: ChooseOptions, document: Document) {
   if (!options.choices.some(enabled)) throw new Error('Provide at least one enabled choice.');
   const element = document.createElement('section');
   element.className = 'lk-choices';
+  element.dataset.scroll = 'end';
   element.setAttribute('aria-label', options.prompt);
   const title = document.createElement('div');
   title.textContent = options.prompt;
@@ -34,11 +35,16 @@ export function createChoices(options: ChooseOptions, document: Document) {
   function accept(index: number): void {
     const choice = options.choices[index];
     if (finished || !choice || choice.disabled) return;
+    selected = index;
+    render();
     finished = true;
-    element.replaceChildren(title);
-    const answer = document.createElement('div');
-    answer.textContent = `❯ ${choice.label}`;
-    element.append(answer);
+    element.dataset.state = 'complete';
+    for (let position = 0; position < buttons.length; position += 1) {
+      const button = buttons[position]!;
+      button.tabIndex = -1;
+      button.setAttribute('aria-disabled', 'true');
+      button.dataset.chosen = String(position === index);
+    }
     resolveResult(choice.value);
     resolveClosed();
   }
@@ -72,18 +78,35 @@ export function createChoices(options: ChooseOptions, document: Document) {
     focus();
   }
   // 将键盘交给当前选项。
-  function focus(): void { buttons[selected]?.focus({ preventScroll: true }); }
+  function focus(): void {
+    const button = buttons[selected];
+    button?.focus({ preventScroll: true });
+    if (button) {
+      const panelBounds = element.getBoundingClientRect();
+      const buttonBounds = button.getBoundingClientRect();
+      if (buttonBounds.top < panelBounds.top) element.scrollTop -= panelBounds.top - buttonBounds.top;
+      else if (buttonBounds.bottom > panelBounds.bottom) element.scrollTop += buttonBounds.bottom - panelBounds.bottom;
+    }
+  }
   // 释放交互面板并保留最终选择记录。
   function dispose(): void {
     element.removeEventListener('keydown', keydown);
     if (!finished) {
       finished = true;
-      element.replaceChildren(title);
+      element.dataset.state = 'cancelled';
       resolveClosed();
+    }
+    for (let index = 0; index < buttons.length; index += 1) {
+      const button = buttons[index]!;
+      const record = document.createElement('div');
+      record.className = 'lk-choice-record';
+      record.textContent = button.textContent;
+      record.dataset.chosen = String(element.dataset.state === 'complete' && index === selected);
+      button.replaceWith(record);
     }
   }
   element.addEventListener('keydown', keydown);
   render();
-  const panel: InteractivePanel = { element, closed, focus, dispose };
+  const panel: InteractivePanel = { element, closed, focus, dispose, scroll: 'end' };
   return { panel, result };
 }
