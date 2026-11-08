@@ -15,8 +15,8 @@
 
 # scoped_memory_files
 > interactive_commands
-可编辑的内存文件系统与用户工作目录。
-- 公开 createMemoryFiles，支持共享内存数据上的用户 scope、目录导航、列出、读取、写入及文件路径补全；保存只影响当前页面内存。
+example/example3/src/files/ 中的演示内存文件系统与用户工作目录。
+- createMemoryFiles 是 example3 内部实现，支持共享内存数据上的用户 scope、目录导航、列出、读取、写入及文件路径补全；保存只影响当前页面内存。
 - 用户 scope 将 / 定义为个人目录边界，支持相对路径、绝对工作区路径、.、.. 和嵌套目录；越界返回错误，当前目录始终可由 pwd 读取。
 - admin scope 将 user1、user2 目录挂载到 /user1、/user2；挂载读写与用户自身视角共享同一底层文件。
 - 普通用户 scope 的路径及补全限定于个人工作区，目录越界、缺失路径、文件目录冲突给出明确错误。
@@ -33,8 +33,8 @@
 # inline_minivim
 > interactive_commands
 > scoped_memory_files
-流内轻量 Vim 风格文本编辑器。
-- 公开 createMiniVim，消费端传入初始文本与保存回调，返回流内交互面板；窗口总高度最多 15 行，长文档内部滚动。
+example/example3/src/editor/ 中的流内轻量 Vim 风格文本编辑器。
+- createMiniVim 是 example3 内部实现，接收初始文本与保存回调，返回 SDK InteractivePanel；窗口总高度最多 15 行，长文档内部滚动。
 - 普通模式 h/j/k/l 移动光标，a 在当前字符后进入插入模式，i 在当前位置插入；插入模式使用原生输入、中文输入法及 Esc 返回普通模式。
 - 普通模式 : 进入命令行，支持 w、q、wq、q!；w 保存内容，q 对未保存修改提示，q! 放弃修改退出，关闭后恢复 shell 输入。
 - Ctrl+C 退出编辑器并放弃未保存修改；焦点与事件属于当前面板，关闭和销毁时释放，编辑器输入与 shell 历史分别管理。
@@ -45,6 +45,7 @@
 > stream_widgets
 > inline_minivim
 example/example3 模拟多用户 LunarService。
+- SDK src/ 只提供通用输入、命令交互生命周期、流内面板、加载状态和 Markdown 渲染；账号密码、权限与挂载策略、命令集合、Vim 编辑行为、欢迎文案及模拟时长属于 example3。
 - 提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit 共九个命令；prompt 前显示当前身份。
 - guest 身份为 guest 加八位随机十六进制摘要；登录前 ls、cat、minivim、pwd 及 cd 提示先登录，whoami、help、login、exit 可用。
 - 三个演示账号为 admin、user1、user2，公开测试密码统一为 lunarkit；这是纯前端演示状态，文件及密码随构建公开，刷新重置数据。
