@@ -190,6 +190,37 @@ async function viewAndChoices({ page }: { page: Page }): Promise<void> {
   await expect(input).toBeFocused();
 }
 
+// 验证柱体纵向生长时保持宽度和基线，坐标轴保持静态。
+async function cargoAnimation({ page }: { page: Page }): Promise<void> {
+  await start(page);
+  await command(page, 'do buy grain 3');
+  await command(page, 'fetch cargo');
+  const chart = page.locator('.merchant-cargo .lk-chart-bar');
+  await expect(chart).toBeVisible();
+  await expect(page.locator('[data-typing]')).toHaveCount(0);
+  // 定位动画进度并测量柱宽、基线和坐标轴变换。
+  function measure(): { bottom: number; endBottom: number; width: number; endWidth: number; height: number; endHeight: number; axis: string } {
+    const group = document.querySelector<SVGGElement>('.lk-bar-enter')!;
+    const animation = group.getAnimations()[0]!;
+    animation.pause();
+    animation.currentTime = 200;
+    const bar = group.querySelector('rect')!;
+    const midway = bar.getBoundingClientRect();
+    animation.currentTime = 650;
+    const end = bar.getBoundingClientRect();
+    return { bottom: midway.bottom, endBottom: end.bottom, width: midway.width, endWidth: end.width, height: midway.height, endHeight: end.height, axis: getComputedStyle(group.parentElement!.querySelector('path')!).transform };
+  }
+  const dimensions = await page.evaluate(measure);
+  expect(dimensions.axis).toBe('none');
+  expect(dimensions.width).toBeCloseTo(dimensions.endWidth, 1);
+  expect(dimensions.bottom).toBeCloseTo(dimensions.endBottom, 1);
+  expect(dimensions.height).toBeGreaterThan(0);
+  expect(dimensions.height).toBeLessThan(dimensions.endHeight);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(chart.locator('.lk-bar-enter')).toHaveCSS('animation-name', 'none');
+}
+
+test('example4 柱体自基线向上生长', cargoAnimation);
 test('example4 状态补全与商店供应', contextualCompletion);
 test('example4 会话恢复与选择平滑交接', viewAndChoices);
 test('example4 三槽保存与刷新恢复', saveAndResume);

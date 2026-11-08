@@ -1,4 +1,5 @@
 import { createViews } from './views.js';
+import { createScenes } from './scenes.js';
 import type { ViewState } from './views.js';
 import { createInteraction } from './interaction.js';
 import { createChoices } from '../input/choices.js';
@@ -14,11 +15,14 @@ export function createTerminal(options: TerminalOptions): Terminal {
   const { element, banner, prompt = '❯', onSubmit, commands } = options;
   let currentPrompt = prompt;
   const maxHistoryLines = options.maxHistoryLines ?? 500;
+  const inputBottomSpace = options.inputBottomSpace ?? 96;
+  if (!Number.isFinite(inputBottomSpace) || inputBottomSpace < 0) throw new RangeError('inputBottomSpace must be finite and nonnegative.');
   if (!Number.isSafeInteger(maxHistoryLines) || maxHistoryLines < 1) throw new RangeError('maxHistoryLines must be a positive safe integer.');
   if (commands && onSubmit) throw new Error('Choose commands or onSubmit for this terminal.');
   const document = element.ownerDocument;
   const root = document.createElement('section');
   root.className = 'lk-terminal';
+  root.style.setProperty('--lk-input-bottom-space', `${inputBottomSpace}px`);
   if (options.paddingInline !== undefined) {
     root.style.paddingInline = typeof options.paddingInline === 'number' ? `${options.paddingInline}px` : options.paddingInline;
   }
@@ -45,19 +49,26 @@ export function createTerminal(options: TerminalOptions): Terminal {
   // 在布局稳定后滚动到当前输入行或最新输出，不依赖隐藏输入框。
   function scrollToLatest(): void {
     scrollFrame = undefined;
-    if (destroyed) return;
+    if (destroyed || scenes.isActive()) return;
+    scenes.refresh();
     const panel = interaction.getPanel();
-    if (panel?.dataset.scroll === 'end') {
-      panel.scrollIntoView?.({ block: 'end', behavior: 'instant' });
-      return;
-    }
-    if (panel) {
+    if (panel && panel.dataset.scroll !== 'end') {
       const focused = document.activeElement;
       if (focused && panel.contains(focused)) focused.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
       return;
     }
-    const target = controller.element.hidden ? stream.lastElementChild : controller.element;
-    target?.scrollIntoView?.({ block: 'end', behavior: 'instant' });
+    const prompt = controller.element;
+    const viewportHeight = view?.visualViewport?.height ?? view?.innerHeight ?? 0;
+    const promptTarget = prompt.getBoundingClientRect().height > viewportHeight - inputBottomSpace ? prompt.querySelector('.lk-caret') : prompt;
+    const target = panel ?? (prompt.hidden ? stream.lastElementChild : promptTarget);
+    target?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+    if (target && view) {
+      const viewportBottom = view.visualViewport ? view.visualViewport.offsetTop + view.visualViewport.height : view.innerHeight;
+      const bottom = target.getBoundingClientRect().bottom + inputBottomSpace;
+      if (bottom > viewportBottom) view.scrollBy({ top: bottom - viewportBottom, behavior: 'instant' });
+      const floor = scenes.floor();
+      if (floor && floor.getBoundingClientRect().top > 0) floor.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    }
   }
 
   // 合并同一帧的输出、布局与输入行可见性变化。
@@ -145,7 +156,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     interaction.restoreShell(root.contains(document.activeElement) || detachedFocus);
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt, openView }, busyChanged) : undefined;
+  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt, openView, nextScene }, busyChanged) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
   function record(text: string, label = currentPrompt): void {
@@ -206,6 +217,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
   streamObserver.observe(stream, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
   // 切换会话输出流，同时恢复对应提示符和公开草稿。
   function activateView(state: ViewState): void {
+    if (scenes.isActive()) runtime?.interrupt();
     streamObserver.disconnect();
     if (stream.parentNode) stream.replaceWith(state.stream);
     else root.insertBefore(state.stream, controller.element);
@@ -235,6 +247,8 @@ export function createTerminal(options: TerminalOptions): Terminal {
     if (destroyed || interaction.isReading() || interaction.getPanel()) throw new Error('Open a view after the current interaction completes.');
     return views.open({ prompt: currentPrompt, draft: controller.getDraft() });
   }
+  // 在当前会话内等待分页滚动完成，后续输出由命令自行提供。
+  function nextScene(signal: AbortSignal): Promise<void> { return scenes.next(signal); }
   const visibilityObserver = new MutationObserver(revealPrompt);
   visibilityObserver.observe(controller.element, { attributes: true, attributeFilter: ['hidden'] });
   const layoutObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(revealPrompt);
@@ -300,6 +314,13 @@ export function createTerminal(options: TerminalOptions): Terminal {
     streamObserver.disconnect();
     visibilityObserver.disconnect();
     layoutObserver?.disconnect();
+    promptObserver?.disconnect();
+    view?.removeEventListener('resize', revealPrompt);
+    view?.visualViewport?.removeEventListener('resize', revealPrompt);
+    controller.element.removeEventListener('input', revealPrompt);
+    controller.element.removeEventListener('keyup', revealPrompt);
+    controller.element.removeEventListener('select', revealPrompt);
+    scenes.dispose();
     if (scrollFrame !== undefined) view?.cancelAnimationFrame(scrollFrame);
     controller.destroy();
     runtime?.interrupt();
@@ -320,6 +341,16 @@ export function createTerminal(options: TerminalOptions): Terminal {
     root.append(heading);
   }
   root.append(stream, controller.element);
+  const scenes = createScenes(root, getStream, revealPrompt);
+  // 返回当前活动流，分页保持与会话切换一致。
+  function getStream(): HTMLElement { return stream; }
+  const promptObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(revealPrompt);
+  promptObserver?.observe(controller.element);
+  controller.element.addEventListener('input', revealPrompt);
+  controller.element.addEventListener('keyup', revealPrompt);
+  controller.element.addEventListener('select', revealPrompt);
+  view?.addEventListener('resize', revealPrompt);
+  view?.visualViewport?.addEventListener('resize', revealPrompt);
   element.append(root);
   focus();
   return { write, focus, interrupt, destroy, setPrompt, openView };

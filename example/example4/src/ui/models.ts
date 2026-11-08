@@ -1,9 +1,20 @@
 import type { Mesh3D, Vertex3D } from 'lunarkit';
 
-export const ship: Mesh3D = {
-  vertices: [[-0.65, -0.4, -0.95], [0.65, -0.4, -0.95], [0.65, 0.4, -0.95], [-0.65, 0.4, -0.95], [-0.65, -0.4, 0.95], [0.65, -0.4, 0.95], [0.65, 0.4, 0.95], [-0.65, 0.4, 0.95]],
-  faces: [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [3, 7, 6], [3, 6, 2], [0, 4, 7], [0, 7, 3], [1, 2, 6], [1, 6, 5]],
-};
+// 组合中央船体与两侧细长舱体，保持各长方体独立的表面法线。
+function merchantShip(): Mesh3D {
+  const vertices: Vertex3D[] = [];
+  const faces: [number, number, number][] = [];
+  const triangles: [number, number, number][] = [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [3, 7, 6], [3, 6, 2], [0, 4, 7], [0, 7, 3], [1, 2, 6], [1, 6, 5]];
+  const bodies: [number, number, number, number][] = [[0, 0.52, 0.4, 0.85], [-0.8, 0.16, 0.18, 1.1], [0.8, 0.16, 0.18, 1.1]];
+  for (const [x, width, height, length] of bodies) {
+    const offset = vertices.length;
+    vertices.push([x - width, -height, -length], [x + width, -height, -length], [x + width, height, -length], [x - width, height, -length], [x - width, -height, length], [x + width, -height, length], [x + width, height, length], [x - width, height, length]);
+    for (const [a, b, c] of triangles) faces.push([a + offset, b + offset, c + offset]);
+  }
+  return { vertices, faces };
+}
+
+export const ship = merchantShip();
 
 // 生成消费端星球的低多边形球面与独立三角面。
 export function sphere(variant = 0): Mesh3D {

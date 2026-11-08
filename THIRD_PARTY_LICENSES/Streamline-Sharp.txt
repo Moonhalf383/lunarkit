@@ -1,0 +1,43 @@
+Streamline Sharp Solid Free icons
+Copyright Streamline — https://streamlinehq.com
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Original collection: https://www.streamlinehq.com/icons/sharp-solid-free
+Official open-source license statement:
+https://github.com/webalys-hq/streamline-vectors/blob/main/README.md
+Redistributed vector source (Sharp free icons, CC BY 4.0 metadata):
+https://github.com/iconify/icon-sets/blob/master/json/streamline-sharp.json
+
+The source metadata identifies Streamline as author and CC BY 4.0 as license.
+CC BY 4.0 permits sharing and adaptation, including commercial use, with
+appropriate credit, a license link, and indication of changes. No endorsement
+by Streamline is implied. Consumers must retain attribution when redistributing
+these icons and provide appropriate visible credit in their applications.
+
+Changes: selected 20 Solid icons; extracted path attributes into TypeScript;
+renamed them to stable LunarKit aliases. Geometry is retained from Iconify's
+normalized SVG data. Some aliases use the nearest available free symbol
+(e.g. magnet uses link-chain-solid; plus uses medical-folder-solid).
+
+Alias -> source icon:
+plus -> medical-folder-solid
+battery -> battery-medium-3-solid
+shield -> shield-2-solid
+radar -> satellite-dish-solid
+rocket -> startup-solid
+fuel -> gas-station-fuel-petroleum-solid
+layers -> layers-1-solid
+box -> shipping-box-1-solid
+badge -> star-badge-solid
+book -> contact-book-solid
+scan -> iris-scan-solid
+beacon -> fire-alarm-1-solid
+tool -> screwdriver-wrench-solid
+magnet -> link-chain-solid
+filter -> filter-2-solid
+package -> archive-box-solid
+star -> star-2-solid
+snowflake -> snow-flake-solid
+map -> map-search-solid
+gem -> card-game-diamond-solid

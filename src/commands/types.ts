@@ -45,6 +45,7 @@ export interface CommandInteraction {
   choose?: (options: ChooseOptions, signal: AbortSignal) => Promise<string>;
   setPrompt: (text: string) => void;
   openView?: () => TerminalView;
+  nextScene?: (signal: AbortSignal) => Promise<void>;
 }
 
 export interface CommandContext {
@@ -56,6 +57,7 @@ export interface CommandContext {
   choose: (options: ChooseOptions) => Promise<string>;
   setPrompt: (text: string) => void;
   openView: () => TerminalView;
+  nextScene: () => Promise<void>;
 }
 
 export interface CompletionContext {

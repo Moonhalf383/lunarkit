@@ -44,12 +44,23 @@ function charts(): void {
   for (const factory of [createPieChart, createBarChart, createLineChart]) {
     const component = factory({ label: 'Resources', data, animate: false });
     expect(component.element.querySelector('svg')!.getAttribute('aria-label')).toContain('A: 30');
-    expect(component.element.querySelector('.lk-chart-enter')).toBeNull();
+    expect(component.element.querySelector('.lk-chart-enter, .lk-bar-enter')).toBeNull();
     component.dispose();
   }
   const progress = createProgressBar({ label: 'Hull', value: 120, max: 100 });
   expect(progress.element.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow')).toBe('100');
   progress.dispose();
+}
+
+// 验证柱状图仅对柱体分组添加入场动画，不变形坐标轴。
+function barAnimation(): void {
+  const chart = createBarChart({ label: 'Cargo', data: [{ label: 'Grain', value: 3 }, { label: 'Ore', value: 1 }] });
+  const svg = chart.element.querySelector('svg')!;
+  expect(svg.classList.contains('lk-chart-enter')).toBe(false);
+  expect(svg.querySelector('.lk-bar-enter')?.querySelectorAll('rect')).toHaveLength(2);
+  expect(svg.querySelector('.lk-bar-enter path')).toBeNull();
+  expect(svg.querySelector(':scope > path')).not.toBeNull();
+  chart.dispose();
 }
 
 // 验证三角面投影输出可见字符并可重复释放。
@@ -86,6 +97,7 @@ function suite(): void {
   it('选择跳过禁用并确认', choices);
   it('打字机字素和取消', typing);
   it('图形数值和动画配置', charts);
+  it('柱体动画与坐标轴隔离', barAnimation);
   it('三维投影与释放', model);
   it('图标和动态模型打字机隔离', iconsAndModels);
 }

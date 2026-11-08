@@ -13,5 +13,12 @@ async function builtMerchant({ page }: { page: Page }): Promise<void> {
   await expect(page.locator('.merchant-stats')).toContainText('Credits1000');
   await expect(page.locator('.lk-chart-pie')).toHaveCount(2);
   await expect(page.locator('.lk-model')).toBeVisible();
+  await expect(page.locator('.lk-model')).toHaveCSS('background-color', 'rgb(9, 9, 9)');
+  await expect(page.locator('.merchant-icon').first()).toHaveAttribute('fill', 'currentColor');
+  await input.fill('do depart nimbus');
+  await input.press('Enter');
+  await expect(page.locator('.lk-output-node').last()).toContainText('Course set for Nimbus');
+  await expect(input).toBeVisible();
+  await expect(page.locator('.lk-scene-boundary')).toHaveCount(1);
 }
 test('example4 静态游戏与可视化', builtMerchant);

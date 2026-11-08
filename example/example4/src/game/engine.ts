@@ -141,6 +141,7 @@ export function travel(run: Run): string {
     run.location = run.destination;
     run.destination = null;
     run.routes += 1;
+    run.arrivalPending = true;
     if (run.items.includes('charm')) run.credits += 20;
   }
   if (!checkEnd(run)) run.pending = events[Math.floor(random(run) * events.length)]!.id;

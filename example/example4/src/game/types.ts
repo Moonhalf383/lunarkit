@@ -20,6 +20,7 @@ export interface Run {
   items: string[];
   markets: Record<string, Record<string, number>>;
   pending: string | null;
+  arrivalPending?: boolean;
   ended: boolean;
   snapshots: Snapshot[];
 }

@@ -27,7 +27,7 @@ function composite(element: HTMLElement, components: OutputComponent[]): OutputC
 export function dashboard(run: Run): OutputComponent {
   const { element, left, right } = columns('merchant-dashboard');
   const components: OutputComponent[] = [];
-  const model = createRotatingModel({ label: 'Merchant ship rotating in space', mesh: ship, columns: 48, rows: 24, light: [-0.6, 0.8, 1] });
+  const model = createRotatingModel({ label: 'Merchant ship rotating in space', mesh: ship, columns: 48, rows: 24, background: 'dark', light: [-0.6, 0.8, 1] });
   const fuel = createPieChart({ label: `Fuel ${run.fuel}/${capacity(run, 'fuel')}`, centerLabel: false, strokeWidth: 24, data: [{ label: 'Available', value: run.fuel }, { label: 'Used', value: capacity(run, 'fuel') - run.fuel }], legend: false });
   const hull = createPieChart({ label: `Hull ${run.hull}/${capacity(run, 'hull')}`, centerLabel: false, strokeWidth: 24, data: [{ label: 'Intact', value: run.hull }, { label: 'Damage', value: capacity(run, 'hull') - run.hull }], legend: false });
   components.push(model, fuel, hull);

@@ -26,6 +26,8 @@ export function validRun(value: unknown): value is Run {
   if (typeof value.location !== 'string' || !worldIds.has(value.location)) return false;
   if (value.destination !== null && (typeof value.destination !== 'string' || !worldIds.has(value.destination) || value.destination === value.location)) return false;
   if (value.pending !== null && (typeof value.pending !== 'string' || !eventIds.has(value.pending))) return false;
+  if (value.arrivalPending !== undefined && typeof value.arrivalPending !== 'boolean') return false;
+  if (value.arrivalPending === true && (value.destination !== null || value.routes === 0)) return false;
   if (typeof value.ended !== 'boolean' || !Array.isArray(value.items) || value.items.length > 6) return false;
   for (const entry of value.items) if (typeof entry !== 'string' || !itemIds.has(entry)) return false;
   for (const entry of items) {

@@ -38,7 +38,7 @@ export function createMerchant(storage?: Storage) {
     const heading = document.createElement('h1');
     heading.className = 'merchant-banner';
     heading.textContent = 'LuanrMerchant';
-    element.append(heading, renderMarkdown('A small turn-based merchant roguelike among ten restless worlds.\n\nTrade local specialties, choose the next star, and keep your ship alive. Credits become score; every extra crossing is another chance to lose everything.\n\n**Type play to begin.** Three local save slots remember your explicit saves on this browser.'));
+    element.append(heading, renderMarkdown('A small turn-based merchant roguelike among ten restless worlds.\n\nTrade local specialties, choose the next star, and keep your ship alive. Credits become score; every extra crossing is another chance to lose everything.\n\n**Type play to begin.** Three local save slots remember your explicit saves on this browser.\n\nIcons by [Streamline](https://streamlinehq.com), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Selected Sharp Solid Free paths use LunarKit aliases.'));
     context.write(element);
   }
   // 将死亡结算写入去重历史，并立即结束当前运行。
@@ -83,6 +83,7 @@ export function createMerchant(storage?: Storage) {
     if (saves.getWarning()) context.write(saves.getWarning());
     context.write(`Slot ${slot + 1} ready. ${planet(active.location).name} · ${active.credits} credits · ${active.fuel} fuel · ${active.hull} hull. Use do for actions. Save from pause to keep progress.`);
     if (active.pending) context.write('An event is waiting. Use do resolve.');
+    else await showArrival(context);
   }
   // 优先暂停当前交互，保存后继续保留暂停菜单。
   async function pause(context: CommandContext): Promise<void> {
@@ -98,6 +99,7 @@ export function createMerchant(storage?: Storage) {
         paused = false;
         update(context);
         context.write(active.pending ? 'Resumed. Use do resolve for the waiting event.' : 'Resumed. Use do for available actions.');
+        if (!active.pending) await showArrival(context);
       } else {
         const confirmation = await context.choose({ prompt: 'Exit to the main terminal? Progress since your last save will be lost.', choices: [{ value: 'stay', label: 'Stay paused' }, { value: 'exit', label: 'Exit to main terminal' }] });
         if (confirmation === 'exit') {
@@ -144,6 +146,16 @@ export function createMerchant(storage?: Storage) {
     }
   }
 
+  // 在抵达事件结算后展示目的地，取消时保留可恢复标记。
+  async function showArrival(context: CommandContext): Promise<void> {
+    if (!active?.arrivalPending || active.pending || active.ended) return;
+    const current = active;
+    await context.nextScene();
+    await animatedOutput(context, planetDetails(planet(current.location), current));
+    context.signal.throwIfAborted();
+    current.arrivalPending = false;
+  }
+
   // 罗列当前阶段实际可用的动作及明确的参数格式。
   function actions(context: CommandContext): void {
     const current = run();
@@ -174,7 +186,7 @@ export function createMerchant(storage?: Storage) {
     context.signal.throwIfAborted();
     context.write(resolveEvent(current, choice));
     update(context);
-    finish(context);
+    if (!finish(context)) await showArrival(context);
   }
   // 输出当前港口全部商品及装备的可读报价。
   function market(context: CommandContext, current: Run): void {
@@ -188,6 +200,7 @@ export function createMerchant(storage?: Storage) {
   async function act(context: CommandContext): Promise<void> {
     const current = run();
     requireAlive(current);
+    if (!current.pending) await showArrival(context);
     const [command, first, second] = context.args;
     if (!command) { actions(context); return; }
     if (command === 'resolve') { await resolve(context, first); return; }
@@ -211,9 +224,12 @@ export function createMerchant(storage?: Storage) {
     } else if (current.pending) throw new Error('Resolve the current event first: do resolve.');
     else if (command === 'travel') {
       if (first) throw new Error('Usage: do travel. Choose the destination with do depart <planet>.');
-      context.write(travel(current));
+      const message = travel(current);
       update(context);
-      if (!finish(context)) await resolve(context);
+      if (finish(context)) return;
+      await context.nextScene();
+      await animatedOutput(context, message);
+      await resolve(context);
       return;
     } else if (command === 'depart') {
       let destination = first;
@@ -223,7 +239,9 @@ export function createMerchant(storage?: Storage) {
         destination = await select(context, 'Choose your next destination', choices);
       }
       depart(current, destination);
-      context.write(`Course set for ${planet(destination).name}: ${current.remaining} distance. Use do travel to advance one turn.`);
+      update(context);
+      await context.nextScene();
+      await animatedOutput(context, `Course set for ${planet(destination).name}: ${current.remaining} distance. Use do travel to advance one turn.`);
     } else if (command === 'market') market(context, current);
     else if (command === 'buy' || command === 'sell') {
       requirePort(current);

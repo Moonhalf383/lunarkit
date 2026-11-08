@@ -9,6 +9,8 @@
   margin-inline: auto;
   padding-block: clamp(20px, 5vw, 72px);
   padding-inline: clamp(24px, 4vw, 48px);
+  padding-bottom: max(clamp(20px, 5vw, 72px), var(--lk-input-bottom-space, 96px));
+  overflow-anchor: none;
   background: #fff;
   color: #000;
   font-family: 'Kode Mono', 'LunarKit Prompt', 'Noto Sans SC', monospace;
@@ -157,6 +159,9 @@
 .lk-model-dark { background: #090909; color: #fff; }
 .lk-icon { display: inline-block; vertical-align: middle; flex: none; }
 .lk-stream[hidden] { display: none; }
+.lk-scene-boundary { position: relative; pointer-events: none; }
+.lk-scene-anchor { position: absolute; bottom: 0; width: 1px; height: 0; }
+.lk-scene-tail { pointer-events: none; }
 .lk-choices button {
   display: block;
   width: 100%;
@@ -175,6 +180,7 @@
 .lk-chart-pie svg { max-height: 130px; }
 .lk-chart-pie .lk-chart-enter { animation: lk-ring-enter 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .lk-chart-enter { transform-origin: center; animation: lk-graph-enter 0.65s ease-out both; }
+.lk-bar-enter { transform-box: view-box; transform-origin: 0 120px; animation: lk-bar-grow 0.65s ease-out both; }
 .lk-chart-legend { padding: 0; list-style: none; font-size: 0.75em; margin-block: 0.3em; }
 .lk-chart figcaption, .lk-progress figcaption { font-size: 0.8em; }
 .lk-progress-track { height: 8px; background: #e5e5e5; margin-block: 0.5em; }
@@ -182,4 +188,5 @@
 .lk-model { margin: 0; font: inherit; font-size: clamp(5px, 1.3vw, 9px); line-height: 1.15; white-space: pre; overflow: hidden; }
 @keyframes lk-ring-enter { from { transform: rotate(-160deg) scale(0.65); opacity: 0; clip-path: inset(0 50% 50% 0); } to { transform: rotate(0deg) scale(1); opacity: 1; clip-path: inset(0); } }
 @keyframes lk-graph-enter { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
-@media (prefers-reduced-motion: reduce) { .lk-chart-enter, .lk-chart-pie .lk-chart-enter { animation: none; } }
+@keyframes lk-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .lk-chart-enter, .lk-chart-pie .lk-chart-enter, .lk-bar-enter { animation: none; } }

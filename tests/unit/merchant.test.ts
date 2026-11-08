@@ -106,6 +106,31 @@ function saves(): void {
   localStorage.clear();
 }
 
+// 验证抵达保持待决事件与可保存的详情展示标记，旧存档仍可加载。
+function arrival(): void {
+  localStorage.clear();
+  const run = createRun(42);
+  expect(validRun(run)).toBe(true);
+  depart(run, 'prism');
+  run.remaining = 1;
+  travel(run);
+  expect(run.location).toBe('prism');
+  expect(run.destination).toBeNull();
+  expect(run.pending).not.toBeNull();
+  expect(run.arrivalPending).toBe(true);
+  const storage = createStorage(localStorage);
+  storage.save(0, run);
+  const saved = createStorage(localStorage).load(0)!;
+  expect(saved.arrivalPending).toBe(true);
+  resolveEvent(saved, 'endure');
+  expect(saved.pending).toBeNull();
+  expect(saved.arrivalPending).toBe(true);
+  expect(validRun(saved)).toBe(true);
+  expect(validRun({ ...saved, arrivalPending: 'yes' })).toBe(false);
+  expect(validRun({ ...createRun(42), arrivalPending: true })).toBe(false);
+  localStorage.clear();
+}
+
 // 组织纯游戏状态与持久化边界测试。
 function suite(): void {
   it('十星球二十道具三十事件', content);
@@ -113,5 +138,6 @@ function suite(): void {
   it('随机回合与事件只结算一次', turns);
   it('道具效果与容量', equipment);
   it('三槽持久化与错误处理', saves);
+  it('抵达事件与详情标记持久化', arrival);
 }
 describe('merchant rules', suite);

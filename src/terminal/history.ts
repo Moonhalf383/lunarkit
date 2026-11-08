@@ -29,6 +29,10 @@ export function trimHistory(stream: HTMLElement, limit: number, protectedPanel?:
   let total = 0;
   for (const child of stream.children) {
     const element = child as HTMLElement;
+    if (element.classList.contains('lk-scene-boundary')) {
+      entries.push({ element, lines: 0, protected: element === stream.querySelectorAll('.lk-scene-boundary').item(stream.querySelectorAll('.lk-scene-boundary').length - 1) });
+      continue;
+    }
     const plain = element.classList.contains('lk-output') || element.classList.contains('lk-submission');
     const content = plain ? element.textContent ?? '' : logicalText(element).replace(/\n$/u, '');
     const lines = content.split('\n').length;

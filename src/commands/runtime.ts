@@ -69,7 +69,13 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
         if (active !== controller || !interaction?.openView) throw new Error('Terminal views unavailable.');
         return interaction.openView();
       }
-      await command.run({ args, signal: controller.signal, write: guardedWrite, read, choose, present, setPrompt, openView });
+      // 等待当前任务的通用场景分页，过滤已取消的调用。
+      function nextScene(): Promise<void> {
+        controller.signal.throwIfAborted();
+        if (active !== controller || !interaction?.nextScene) return Promise.reject(new Error('Terminal scenes unavailable.'));
+        return interaction.nextScene(controller.signal);
+      }
+      await command.run({ args, signal: controller.signal, write: guardedWrite, read, choose, present, setPrompt, openView, nextScene });
     } catch (error) {
       guardedWrite(error instanceof Error ? error.message : String(error));
     } finally {

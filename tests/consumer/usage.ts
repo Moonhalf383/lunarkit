@@ -8,6 +8,7 @@ const options: TerminalOptions = {
   paddingInline: '5vw',
   maxWidth: 1080,
   maxHistoryLines: 500,
+  inputBottomSpace: 96,
 };
 
 const terminal = createTerminal(options);
@@ -49,6 +50,7 @@ const panel: InteractivePanel = { element: document.createElement('section'), cl
 // 验证交互提问、面板及渲染工具的构建声明。
 async function interactive(context: CommandContext): Promise<void> {
   const view = context.openView();
+  await context.nextScene();
   view.close();
   const answer = await context.read({ prompt: 'Name:', secret: true });
   await context.choose({ prompt: 'Choose:', choices: [{ label: 'One', value: 'one' }] });

@@ -105,7 +105,10 @@ export function createProgressBar(options: { label: string; value: number; max?:
 // 创建共享坐标系的柱状图或折线图。
 function cartesian(options: ChartOptions, line: boolean): OutputComponent {
   const { element, svg } = container(options, line ? 'line' : 'bar');
+  if (!line) svg.classList.remove('lk-chart-enter');
   shape(svg, 'path', { d: 'M12 8V124H232', fill: 'none', stroke: '#000' });
+  const plot = line ? svg : shape(svg, 'g', {});
+  if (!line && options.animate !== false) plot.classList.add('lk-bar-enter');
   let max = 1;
   for (const datum of options.data) max = Math.max(max, datum.value);
   let points = '';
@@ -117,7 +120,7 @@ function cartesian(options: ChartOptions, line: boolean): OutputComponent {
     if (line) {
       points += `${x},${y} `;
       shape(svg, 'circle', { cx: x, cy: y, r: 2, fill: '#000' });
-    } else shape(svg, 'rect', { x: x - width * 0.35, y, width: width * 0.7, height: 120 - y, fill: '#000' });
+    } else shape(plot, 'rect', { x: x - width * 0.35, y, width: width * 0.7, height: 120 - y, fill: '#000' });
   }
   if (line) shape(svg, 'polyline', { points, fill: 'none', stroke: '#000', 'stroke-width': 2 });
   return { element, dispose };
