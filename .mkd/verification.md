@@ -48,6 +48,21 @@
 - 已查看 example2 help 的桌面与 320px 窄屏截图，保持两列和竖线且无横向溢出；截图位于本地 test-results/。
 - `npm audit` 为 0 vulnerabilities；`npm pack --dry-run` 包含新增公开声明与库代码，排除两个 example 的构建产物。
 
+## 第三阶段验收
+
+- 用户确认目录结构采用 example/example1、example/example2、example/example3；Vite 入口、构建输出、类型与注释检查均同步更新。
+- SDK 仅新增通用的 CommandContext.read/present/setPrompt、terminal.setPrompt、InteractivePanel 生命周期、showLoading 及 renderMarkdown。
+- 账号、公开演示密码、用户工作区与 admin 挂载、九个命令、登录与读取延迟、欢迎文案、minivim 及其键位放在 example/example3/src/，SDK 导出不包含模拟服务器或其文件系统。
+- example3 提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit；guest 使用八位随机摘要。登录与文件修改仅在本页面内存存在。
+- 登录包含 3 秒字符 spinner、用户名输入、秘密密码输入及 LunarService 欢迎消息；cat 包含进度条和安全 Markdown 渲染。
+- minivim 的流内窗口最多 15 行，支持 hjkl、i/a、Esc、:w/:q/:wq/:q!；admin 写入挂载文件后，用户登录读取到同一份修改。
+- npm run check 通过：24 项单元测试、22 项开发页 Chromium 测试、3 项生产产物测试，以及严格类型、ESLint、中文注释、库与三个用例构建、NodeNext 消费检查。
+- 独立审查发现的秘密选区复制、启动焦点回调中取消、销毁抢占外部焦点和编辑器首行为空的移动问题均已修复，补充了对应单元及浏览器用例。
+- 秘密输入不进入镜像、输出和历史；取消时清空原生输入值，拦截秘密值的复制剪切；面板取消与销毁释放资源。
+- 文档渲染测试验证脚本按字面量显示，危险链接移除，外部图片元素过滤，标题最大 1.5em。
+- 已查看 example3-session.png 和 example3-minivim.png，确认流内欢迎语、Markdown 与编辑窗口；截图是 test-results/ 的本地产物。
+- npm audit 为 0 vulnerabilities；已有 echo 与文件命令用例继续通过回归。
+
 ## 审查及边界
 
 独立审查指出的换行光标插入断点与 NodeNext 声明扩展名问题已经修正，并补充对应测试。中文输入法边界通过合成组合事件验证；各操作系统真实候选窗口体验仍可手动复核。当前自动化浏览器覆盖 Chromium。
