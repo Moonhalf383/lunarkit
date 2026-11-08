@@ -19,6 +19,7 @@ export interface PromptActions {
   complete?: (text: string, cursor: number) => CompletionResult;
   suggest?: (candidates: readonly string[]) => void;
   isReading?: () => boolean;
+  canInterrupt?: (text: string) => boolean;
 }
 
 // 创建支持原生编辑、输入法和历史导航的输入行。
@@ -138,7 +139,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
       complete();
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      if (actions.isBusy?.() && !actions.isReading?.()) return;
+      if (actions.isBusy?.() && !actions.isReading?.() && !actions.canInterrupt?.(input.value)) return;
       const text = input.value;
       if (!actions.isReading?.()) history.remember(text);
       restore('');

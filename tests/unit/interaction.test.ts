@@ -152,6 +152,24 @@ async function afterPanel(): Promise<void> {
   finish();
 }
 
+// 验证图形组件在历史淘汰和终端销毁时各释放一次。
+function outputDisposal(): void {
+  let disposed = 0;
+  // 统计当前组件的资源释放次数。
+  function dispose(): void { disposed += 1; }
+  const terminal = createTerminal({ element: document.body, maxHistoryLines: 1 });
+  terminals.push(terminal);
+  const first = document.createElement('div');
+  first.textContent = 'component';
+  terminal.write({ element: first, dispose });
+  terminal.write('next');
+  expect(disposed).toBe(1);
+  terminal.write({ element: document.createElement('div'), dispose });
+  terminal.destroy();
+  terminal.destroy();
+  expect(disposed).toBe(2);
+}
+
 // 组织 SDK 通用交互生命周期测试。
 function suite(): void {
   afterEach(cleanup);
@@ -160,5 +178,6 @@ function suite(): void {
   it('销毁时保持外部焦点', focusOnDestroy);
   it('异步完成保持外部焦点', busyFocus);
   it('面板结束后继续加载可取消', afterPanel);
+  it('组件淘汰和销毁释放资源', outputDisposal);
 }
 describe('interactive commands', suite);

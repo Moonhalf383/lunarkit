@@ -1,4 +1,21 @@
-export type TerminalOutput = string | HTMLElement;
+export interface OutputComponent {
+  element: HTMLElement;
+  dispose: () => void;
+}
+
+export type TerminalOutput = string | HTMLElement | OutputComponent;
+
+export interface Choice {
+  label: string;
+  value: string;
+  description?: string;
+  disabled?: boolean;
+}
+
+export interface ChooseOptions {
+  prompt: string;
+  choices: readonly Choice[];
+}
 
 export interface ReadOptions {
   prompt: string;
@@ -15,6 +32,7 @@ export interface InteractivePanel {
 export interface CommandInteraction {
   read: (options: ReadOptions, signal: AbortSignal) => Promise<string>;
   present: (panel: InteractivePanel, signal: AbortSignal) => Promise<void>;
+  choose?: (options: ChooseOptions, signal: AbortSignal) => Promise<string>;
   setPrompt: (text: string) => void;
 }
 
@@ -24,6 +42,7 @@ export interface CommandContext {
   write: (output: TerminalOutput) => void;
   read: (options: ReadOptions) => Promise<string>;
   present: (panel: InteractivePanel) => Promise<void>;
+  choose: (options: ChooseOptions) => Promise<string>;
   setPrompt: (text: string) => void;
 }
 
@@ -34,6 +53,7 @@ export interface CompletionContext {
 
 export interface Command {
   description: string;
+  interruptRunning?: boolean;
   run: (context: CommandContext) => void | Promise<void>;
   complete?: (context: CompletionContext) => readonly string[];
 }

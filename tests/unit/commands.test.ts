@@ -69,7 +69,7 @@ async function cancellation(): Promise<void> {
   let resolve!: () => void;
   let signal!: AbortSignal;
   // 收集终端文本输出。
-  function write(output: string | HTMLElement): void {
+  function write(output: unknown): void {
     outputs.push(String(output));
   }
   // 模拟遵循取消信号但仍可能迟到完成的命令。

@@ -1,4 +1,4 @@
-import { createTerminal, createTextFiles, renderMarkdown, showLoading } from 'lunarkit';
+import { createTerminal, createTextFiles, createPieChart, createBarChart, createLineChart, createProgressBar, createRotatingModel, renderMarkdown, showLoading, typewrite } from 'lunarkit';
 import type { CommandContext, Commands, CompletionContext, InteractivePanel, TerminalOptions } from 'lunarkit';
 import 'lunarkit/style.css';
 
@@ -44,6 +44,16 @@ const panel: InteractivePanel = { element: document.createElement('section'), cl
 // 验证交互提问、面板及渲染工具的构建声明。
 async function interactive(context: CommandContext): Promise<void> {
   const answer = await context.read({ prompt: 'Name:', secret: true });
+  await context.choose({ prompt: 'Choose:', choices: [{ label: 'One', value: 'one' }] });
+  const document = renderMarkdown('# Animated');
+  context.write(document);
+  await typewrite({ element: document, signal: context.signal, interval: 1 });
+  const chartOptions = { label: 'Data', data: [{ label: 'Value', value: 1 }], animate: false };
+  context.write(createPieChart(chartOptions));
+  context.write(createBarChart(chartOptions));
+  context.write(createLineChart(chartOptions));
+  context.write(createProgressBar({ label: 'Progress', value: 1 }));
+  context.write(createRotatingModel({ label: 'Mesh', mesh: { vertices: [[0, 0, 0]], faces: [] }, animate: false }));
   context.setPrompt(`${answer} ❯`);
   await showLoading({ label: 'Loading', duration: 1, signal: context.signal, write: context.write });
   context.write(renderMarkdown('# Title'));

@@ -7,6 +7,7 @@ export interface TerminalOptions {
   paddingInline?: number | string;
   maxWidth?: number | string;
   maxHistoryLines?: number;
+  priorityCommand?: (text: string) => string | undefined;
   onSubmit?: (text: string) => void;
   commands?: Commands;
   busyInput?: 'editable' | 'hidden';

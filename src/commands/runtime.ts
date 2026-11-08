@@ -1,6 +1,6 @@
 import { completeCommand } from './complete.js';
 import { parseCommand } from './parse.js';
-import type { CommandInteraction, Commands, InteractivePanel, ReadOptions, TerminalOutput } from './types.js';
+import type { ChooseOptions, CommandInteraction, Commands, InteractivePanel, ReadOptions, TerminalOutput } from './types.js';
 
 // 管理单个运行命令的取消信号，过滤已取消任务的异步结果。
 export function createCommandRuntime(commands: Commands, write: (output: TerminalOutput) => void, interaction?: CommandInteraction, onBusyChange?: (busy: boolean) => void) {
@@ -22,13 +22,17 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
 
   // 解析输入并执行命令，将有效任务的输出交给终端。
   async function execute(text: string): Promise<void> {
-    if (active) return;
+    if (active) {
+      if (!canInterrupt(text)) return;
+      interrupt();
+    }
     const controller = new AbortController();
     active = controller;
     onBusyChange?.(true);
     // 只写入当前仍有效的命令输出。
     function guardedWrite(output: TerminalOutput): void {
       if (active === controller && !controller.signal.aborted) write(output);
+      else if (typeof output !== 'string' && 'element' in output) output.dispose();
     }
     try {
       const [name, ...args] = parseCommand(text);
@@ -53,7 +57,13 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
       function setPrompt(text: string): void {
         if (active === controller && !controller.signal.aborted) interaction?.setPrompt(text);
       }
-      await command.run({ args, signal: controller.signal, write: guardedWrite, read, present, setPrompt });
+      // 为当前命令提供可取消的声明式选择。
+      function choose(options: ChooseOptions): Promise<string> {
+        controller.signal.throwIfAborted();
+        if (active !== controller || !interaction?.choose) return Promise.reject(new Error('Interactive choices unavailable.'));
+        return interaction.choose(options, controller.signal);
+      }
+      await command.run({ args, signal: controller.signal, write: guardedWrite, read, choose, present, setPrompt });
     } catch (error) {
       guardedWrite(error instanceof Error ? error.message : String(error));
     } finally {
@@ -69,5 +79,15 @@ export function createCommandRuntime(commands: Commands, write: (output: Termina
     return completeCommand(commands, text, cursor);
   }
 
-  return { execute, interrupt, isBusy, complete };
+  // 仅允许消费端显式标记的命令替换当前任务。
+  function canInterrupt(text: string): boolean {
+    try {
+      const [name] = parseCommand(text);
+      return Boolean(name && Object.hasOwn(commands, name) && commands[name]?.interruptRunning);
+    } catch {
+      return false;
+    }
+  }
+
+  return { execute, interrupt, isBusy, complete, canInterrupt };
 }

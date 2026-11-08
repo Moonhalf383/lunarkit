@@ -135,6 +135,38 @@ async function greet(context: CommandContext): Promise<void> {
 
 **源码边界**：`src/` 提供命令、输入、面板生命周期、渲染与加载能力；账号密码、用户目录／权限、命令集合、Vim 键位和界面、欢迎文案及模拟延迟全部位于 `example/example3/src/`。SDK 不导出模拟服务器、内存用户文件系统或 minivim。
 
+## LuanrMerchant · example4
+
+```sh
+npm run dev:example4
+npm run build:example4
+npm run preview:example4
+```
+
+`example/example4/` 是纯指令回合制跑商肉鸽，玩家界面为英文。命令为 **help、about、play、pause、fetch、do**；`about` 显示用户指定拼写的 LuanrMerchant banner。
+
+- **play**：上下键选择三个存档位；已有存档可继续或开启新局。localStorage 保存显式存档和最近二十局结算历史，刷新后可恢复；浏览器禁用存储时提示当前仅本页保存。
+- **pause**：流内 Save / Continue / Exit。Save 后仍保持暂停；选择或打字机期间可直接键入 `pause` 再按 Enter，中断当前交互。中断事件叙事保留待决策事件，可用 `do resolve` 继续。
+- **fetch**：局外列出历史成绩，局内默认以紧凑双列显示旋转飞船、船体与燃料环图、资源和最多六件道具；`fetch history` 单独查看资金折线，`fetch cargo` 查看已持有货物柱状图与容量进度。`fetch prism` 显示星球信息与模型，`fetch patch` 显示图标及逐字揭示的 Markdown 特性。
+- **do**：列出当前阶段可用动作。港口使用 `do market`、`do buy grain 5`、`do sell grain 5`、`do refuel 10`、`do repair 10`、`do equip shield`；`do use patch` 使用消耗品，`do discard patch` 释放槽位。缺少目标或数量时通过流内选择或键入补齐。
+- **航行**：`do depart prism` 选择目的地，`do travel` 推进一回合；每回合随机前进 12–23 距离，消耗燃料和逐步增加的维护费，价格小幅波动，并遇到一个事件。事件解决后继续航行，到达后进入港口交易；查询、交易和决策期间时间静止。
+
+世界包含十颗星球和十种特产，欧式距离形成带权完全图；二十件道具覆盖消耗品和被动装备，三十个事件各有明确收益、代价或风险。初始 1000 资金、100 燃料、100 船体、30 货舱和两件应急道具。空燃料航行或船体耗尽结算，维护费付不起时损伤船体；得分为资金 + 25 × 回合 + 100 × 航线 + 货物残值。事件始终提供以 12 船体为代价的 endure 选项。
+
+### 新增 SDK 消费接口
+
+- `context.choose({ prompt, choices })`：选项含 `label`、`value`、可选 `description` / `disabled`；上下键、Home/End、Enter 或鼠标确认，返回字符串值。完成后保留流内选择记录，Ctrl+C 取消沿用命令生命周期。
+- `typewrite({ element, signal, interval? })`：按完整字素逐步揭示已创建节点的文本；可直接处理 `renderMarkdown()` 返回的文档，保留标题和链接结构。取消时恢复完整可读文本并拒绝 Promise，减少动态效果下立即显示。
+- `createPieChart`、`createBarChart`、`createLineChart`：接收 `{ label, data: [{ label, value }], legend?, animate? }`，返回可释放组件；黑白环图具有旋转入场，图形含可访问数值描述。
+- `createProgressBar({ label, value, max?, animate? })`：图形轨道进度条，包含原生进度语义。
+- `createRotatingModel({ label, mesh, columns?, rows?, speed?, animate? })`：接受顶点和三角面的通用网格，通过深度缓冲绘制低分辨率字符投影；屏幕外及页面隐藏时暂停，减少动态效果下显示静态模型。
+- `terminal.write(component)` / `context.write(component)` 接受 `{ element, dispose }`。历史淘汰和终端销毁时释放组件，消费端组合多组件时负责在组合的 dispose 中逐个释放。
+- `Command.interruptRunning` 显式声明优先命令。`TerminalOptions.priorityCommand(text)` 将面板接管期间键入的文本映射成命令，优先命令会取消原命令再执行；example4 通过该配置实现 pause。
+
+SDK 提供与游戏内容无关的选择、渲染与生命周期能力。游戏状态、随机序列、存档校验、价格、道具、事件、飞船和星球网格、icon 及双列布局均在 `example/example4/src/`，通过公开包入口消费 SDK。
+
+图表参考页 `099.supply/components/004` 可访问的内容标记为 Loader，预览区未呈现动画；本实现依据需求提供黑圈旋转入场。已检查本机 `fetch --help` 的旋转、粗分辨率和字符明暗参数，并在浏览器实现同类字符投影。
+
 ## 目录
 
 ```text
@@ -144,12 +176,14 @@ src/
   files/              只读文本文件挂载
   input/              输入行与历史草稿状态
   terminal/           终端公开类型、提问与面板生命周期
-  output/             通用加载提示与安全 Markdown 渲染
+  output/             通用加载提示、安全 Markdown 与打字机输出
+  visuals/            黑白图表、低分辨率三维投影和可见动画
   theme/              主题及字体
   index.ts            库公开入口
 example/
   example1/           原样回显消费用例
   example2/           只读文件挂载与命令帮助用例
+  example4/           LuanrMerchant 游戏、内容、存档与可视化布局
   example3/
     src/
       files/          演示内存工作区与挂载规则

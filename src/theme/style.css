@@ -141,3 +141,30 @@
 .lk-markdown a { color: inherit; }
 .lk-markdown table { display: block; overflow-x: auto; }
 .lk-loading { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lk-choices { margin-block: 0.5em 1em; }
+.lk-choices button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.2em 0.5em;
+  cursor: pointer;
+}
+.lk-choices button[aria-pressed='true'] { background: #000; color: #fff; }
+.lk-choices button:disabled { opacity: 0.4; cursor: default; }
+.lk-chart, .lk-progress { margin: 0; width: 100%; }
+.lk-chart svg { display: block; width: 100%; max-height: 180px; overflow: visible; }
+.lk-chart-pie svg { max-height: 130px; }
+.lk-chart-pie .lk-chart-enter { animation: lk-ring-enter 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lk-chart-enter { transform-origin: center; animation: lk-graph-enter 0.65s ease-out both; }
+.lk-chart-legend { padding: 0; list-style: none; font-size: 0.75em; margin-block: 0.3em; }
+.lk-chart figcaption, .lk-progress figcaption { font-size: 0.8em; }
+.lk-progress-track { height: 8px; background: #e5e5e5; margin-block: 0.5em; }
+.lk-progress-fill { height: 100%; background: #000; transform-origin: left; }
+.lk-model { margin: 0; font: inherit; font-size: clamp(5px, 1.3vw, 9px); line-height: 1.15; white-space: pre; overflow: hidden; }
+@keyframes lk-ring-enter { from { transform: rotate(-160deg) scale(0.65); opacity: 0; clip-path: inset(0 50% 50% 0); } to { transform: rotate(0deg) scale(1); opacity: 1; clip-path: inset(0); } }
+@keyframes lk-graph-enter { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .lk-chart-enter, .lk-chart-pie .lk-chart-enter { animation: none; } }

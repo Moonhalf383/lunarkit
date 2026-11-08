@@ -1,7 +1,8 @@
 import { createInteraction } from './interaction.js';
+import { createChoices } from '../input/choices.js';
 import { trimHistory } from './history.js';
 import { createCommandRuntime } from '../commands/runtime.js';
-import type { InteractivePanel, ReadOptions, TerminalOutput } from '../commands/types.js';
+import type { ChooseOptions, InteractivePanel, OutputComponent, ReadOptions, TerminalOutput } from '../commands/types.js';
 import { createPrompt } from '../input/prompt.js';
 import type { PromptActions } from '../input/prompt.js';
 import type { Terminal, TerminalOptions } from './types.js';
@@ -28,8 +29,10 @@ export function createTerminal(options: TerminalOptions): Terminal {
   stream.setAttribute('role', 'log');
   stream.setAttribute('aria-label', '交互记录');
   stream.setAttribute('aria-live', 'polite');
+  const components = new Map<HTMLElement, OutputComponent>();
   let destroyed = false;
   let busy = false;
+  let priorityBuffer = '';
   // 面板释放焦点后保留本轮输入所有权，供命令最终完成时恢复。
   let restoreOwnedFocus = false;
   root.tabIndex = -1;
@@ -60,16 +63,28 @@ export function createTerminal(options: TerminalOptions): Terminal {
   function updateStream(): void {
     if (destroyed) return;
     trimHistory(stream, maxHistoryLines, interaction.getPanel());
+    for (const [node, component] of components) {
+      if (!stream.contains(node)) {
+        components.delete(node);
+        component.dispose();
+      }
+    }
     revealPrompt();
   }
 
   // 向当前流写入保留空白的安全文本或消费端创建的节点。
   function write(output: TerminalOutput): void {
-    if (destroyed) return;
+    if (destroyed) {
+      if (typeof output !== 'string' && 'element' in output) output.dispose();
+      return;
+    }
     const line = document.createElement('div');
     line.className = typeof output === 'string' ? 'lk-output' : 'lk-output-node';
     if (typeof output === 'string') line.textContent = output;
-    else line.append(output);
+    else if ('element' in output) {
+      components.set(output.element, output);
+      line.append(output.element);
+    } else line.append(output);
     stream.append(line);
     updateStream();
   }
@@ -82,6 +97,14 @@ export function createTerminal(options: TerminalOptions): Terminal {
   // 将流内交互面板交给统一生命周期托管。
   function present(panel: InteractivePanel, signal: AbortSignal): Promise<void> {
     return interaction.present(panel, signal);
+  }
+
+  // 等待选择面板并在取消时沿用命令的取消原因。
+  async function choose(options: ChooseOptions, signal: AbortSignal): Promise<string> {
+    const { panel, result } = createChoices(options, document);
+    await interaction.present(panel, signal);
+    signal.throwIfAborted();
+    return result;
   }
 
   // 同步会话身份标签与当前输入行。
@@ -111,11 +134,12 @@ export function createTerminal(options: TerminalOptions): Terminal {
   // 运行态通知只用于通用交互生命周期，具体业务由消费端管理。
   function busyChanged(value: boolean): void {
     busy = value;
+    priorityBuffer = '';
     const detachedFocus = document.activeElement === document.body && restoreOwnedFocus;
     interaction.restoreShell(root.contains(document.activeElement) || detachedFocus);
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write, { read, present, setPrompt }, busyChanged) : undefined;
+  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt }, busyChanged) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
   function record(text: string, label = currentPrompt): void {
@@ -135,7 +159,8 @@ export function createTerminal(options: TerminalOptions): Terminal {
 
   // 记录提交原文并交给当前消费模式。
   function submit(text: string): void {
-    if (destroyed || interaction.answer(text)) return;
+    if (destroyed) return;
+    if (!runtime?.canInterrupt(text) && interaction.answer(text)) return;
     record(text);
     if (runtime) void runtime.execute(text);
     else onSubmit?.(text);
@@ -161,6 +186,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     actions.complete = runtime.complete;
     actions.suggest = suggest;
     actions.isReading = isReading;
+    actions.canInterrupt = runtime.canInterrupt;
   }
   const controller = createPrompt(document, prompt, actions);
   const interaction = createInteraction(controller, record, write, getLabel, restoreInput);
@@ -168,6 +194,8 @@ export function createTerminal(options: TerminalOptions): Terminal {
   function streamChanged(records: MutationRecord[]): void {
     const panel = interaction.getPanel();
     for (const record of records) {
+      const target = record.target.nodeType === 1 ? record.target as Element : record.target.parentElement;
+      if (target?.closest('[data-transient="true"]')) continue;
       if (!panel?.contains(record.target)) {
         updateStream();
         return;
@@ -197,6 +225,28 @@ export function createTerminal(options: TerminalOptions): Terminal {
       cancel('');
     }
   }
+  // 收集被面板接管期间的优先命令输入并提交。
+  function priorityKeydown(event: KeyboardEvent): void {
+    if (!runtime?.isBusy() || !options.priorityCommand || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target === controller.element.querySelector('textarea')) return;
+    if (event.key === 'Backspace') priorityBuffer = priorityBuffer.slice(0, -1);
+    else if (event.key.length === 1) priorityBuffer = (priorityBuffer + event.key).slice(-64);
+    else if (event.key === 'Enter') {
+      const command = options.priorityCommand(priorityBuffer);
+      priorityBuffer = '';
+      if (command && runtime.canInterrupt(command)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        record(command);
+        void runtime.execute(command);
+      }
+    } else priorityBuffer = '';
+  }
+  // 鼠标或焦点切换意味着当前优先输入片段已经结束。
+  function resetPriority(): void { priorityBuffer = ''; }
+  root.addEventListener('pointerdown', resetPriority);
+  root.addEventListener('focusin', resetPriority);
+  root.addEventListener('keydown', priorityKeydown, true);
   root.addEventListener('keydown', busyKeydown);
   root.addEventListener('lk-interrupt', interruptPanel);
 
@@ -222,7 +272,12 @@ export function createTerminal(options: TerminalOptions): Terminal {
     if (scrollFrame !== undefined) view?.cancelAnimationFrame(scrollFrame);
     controller.destroy();
     runtime?.interrupt();
+    root.removeEventListener('pointerdown', resetPriority);
+    root.removeEventListener('focusin', resetPriority);
+    root.removeEventListener('keydown', priorityKeydown, true);
     root.removeEventListener('keydown', busyKeydown);
+    for (const component of components.values()) component.dispose();
+    components.clear();
     root.removeEventListener('lk-interrupt', interruptPanel);
     root.remove();
   }
