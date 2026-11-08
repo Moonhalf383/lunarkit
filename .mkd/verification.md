@@ -83,6 +83,19 @@
 - npm run check 全部通过：31 项单元测试、26 项开发页 Chromium 测试、3 项生产产物测试，以及严格类型、规范检查、构建和公开声明消费检查；npm audit 为 0 vulnerabilities。
 - mkd lint --all、mkd build --check、mkd target third_stage --check 通过，已核查第三阶段依赖图。
 
+## 第四阶段：LuanrMerchant
+
+- SDK 提供 context.choose、typewrite、环形饼图、图形进度条、柱状图、折线图和接受通用网格的旋转字符三维渲染；OutputComponent 的 dispose 随历史淘汰与终端销毁调用，屏幕外及后台页面暂停旋转。
+- 命令可声明 interruptRunning，终端通过 priorityCommand 映射面板期间的键入。example4 将 pause 设为优先命令；取消原交互后进入 Save / Continue / Exit，Save 后仍保持暂停。
+- example/example4/ 完整实现六个命令、十颗星球完全图、十种特产、二十道具、三十事件、港口交易与随机航行；游戏内容、随机状态、存档、模型、图标、布局均位于消费端。
+- 三个 localStorage 槽位支持显式保存、刷新继续和待决策事件恢复；读取校验版本、资源、标识、装备与市场结构，持久化失败时保留本页副本并提示。存活回合、现金、航线与货物残值组成分数。
+- 根据用户截图反馈重排 fetch：默认只展示放大飞船、两枚资源环图和顶部对齐的数值及道具；资金折线移至 fetch history，货舱图移至 fetch cargo 且仅展示持有商品。独立布局测试检查两列顶点相同、默认高度小于 440px 和 320px 窄屏宽度。
+- 已查看桌面 dashboard 和窄屏道具、星球截图；默认 dashboard 使用标签/数值网格，去掉原先底部大块图表与长图例。截图位于本地 test-results/，生产测试可能清理该目录。
+- 独立审查发现继承属性商品名可能污染资金、优先命令输入残片跨交互保留的问题；已通过商品定义及自有属性校验和交互边界清空修正，加入回归。
+- npm run check 全部通过：41 项单元测试、30 项开发页 Chromium 测试、4 项生产产物测试，包含完整类型、ESLint、中文注释、四个用例构建和 NodeNext 消费验证。
+- npm audit 为 0 vulnerabilities；mkd lint --all、mkd build --check、mkd target fourth_stage --check 通过，已生成依赖图核对第四阶段与前序能力的关系。
+- 参考网页显示 Loader 说明与空白预览区域，当前环图为依据需求制作的黑圈旋转入场；本机 fetch 帮助中的字符明暗与旋转参数为三维效果参考。长期经济平衡仍可根据实际游玩数据迭代。
+
 ## 审查及边界
 
 独立审查指出的换行光标插入断点与 NodeNext 声明扩展名问题已经修正，并补充对应测试。中文输入法边界通过合成组合事件验证；各操作系统真实候选窗口体验仍可手动复核。当前自动化浏览器覆盖 Chromium。

@@ -30,6 +30,7 @@
 > third_stage
 > merchant_example
 交付通用选择、打字机和可视化组件，以及 LuanrMerchant 回合制跑商游戏。
+已通过 npm run check：41 项单元测试、30 项开发页 Chromium 测试、4 项生产产物测试，以及严格类型、规范、构建和公开声明消费检查。验收记录见 verification.md。
 - 以 fourth-example.mf 的 SDK 生命周期、图表、三维渲染、游戏规则与消费用例为验收范围。
 
 # start
