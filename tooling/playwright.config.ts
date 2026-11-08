@@ -6,6 +6,11 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:4173', headless: true },
   webServer: [
     {
+      command: 'npm run dev:example3 -- --host 127.0.0.1 --port 4176 --strictPort',
+      url: 'http://127.0.0.1:4176',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
       command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,

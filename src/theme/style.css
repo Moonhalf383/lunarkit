@@ -40,6 +40,8 @@
 
 .lk-prompt-prefix {
   flex: none;
+  max-width: 65%;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
@@ -100,6 +102,14 @@
   pointer-events: none;
 }
 
+.lk-prompt[hidden] { display: none; }
+
+.lk-input-secret {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.lk-input-secret::selection { background: transparent; }
+
 .lk-editor:focus-within .lk-caret {
   visibility: visible;
 }
@@ -117,3 +127,16 @@
     animation: none;
   }
 }
+
+.lk-markdown { overflow-wrap: anywhere; padding-block: 0.5em; }
+.lk-markdown h1 { font-size: 1.5em; }
+.lk-markdown h2 { font-size: 1.3em; }
+.lk-markdown h3 { font-size: 1.15em; }
+.lk-markdown h4, .lk-markdown h5, .lk-markdown h6 { font-size: 1em; }
+.lk-markdown h1, .lk-markdown h2, .lk-markdown h3 { font-weight: 500; line-height: 1.4; }
+.lk-markdown pre { white-space: pre-wrap; border-left: 1px solid; padding-left: 1em; }
+.lk-markdown code { font-family: inherit; }
+.lk-markdown blockquote { margin-inline: 0; padding-left: 1em; border-left: 1px solid; }
+.lk-markdown a { color: inherit; }
+.lk-markdown table { display: block; overflow-x: auto; }
+.lk-loading { white-space: pre-wrap; overflow-wrap: anywhere; }

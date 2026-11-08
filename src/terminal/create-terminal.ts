@@ -1,5 +1,6 @@
+import { createInteraction } from './interaction.js';
 import { createCommandRuntime } from '../commands/runtime.js';
-import type { TerminalOutput } from '../commands/types.js';
+import type { InteractivePanel, ReadOptions, TerminalOutput } from '../commands/types.js';
 import { createPrompt } from '../input/prompt.js';
 import type { PromptActions } from '../input/prompt.js';
 import type { Terminal, TerminalOptions } from './types.js';
@@ -7,6 +8,7 @@ import type { Terminal, TerminalOptions } from './types.js';
 // 在指定元素中创建独立的流式浏览器终端。
 export function createTerminal(options: TerminalOptions): Terminal {
   const { element, banner, prompt = '❯', onSubmit, commands } = options;
+  let currentPrompt = prompt;
   if (commands && onSubmit) throw new Error('Choose commands or onSubmit for this terminal.');
   const document = element.ownerDocument;
   const root = document.createElement('section');
@@ -41,15 +43,37 @@ export function createTerminal(options: TerminalOptions): Terminal {
     revealPrompt();
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write) : undefined;
+  // 将命令上下文中的提问转交给终端交互管理器。
+  function read(options: ReadOptions, signal: AbortSignal): Promise<string> {
+    return interaction.read(options, signal);
+  }
+
+  // 将流内交互面板交给统一生命周期托管。
+  function present(panel: InteractivePanel, signal: AbortSignal): Promise<void> {
+    return interaction.present(panel, signal);
+  }
+
+  // 同步会话身份标签与当前输入行。
+  function setPrompt(text: string): void {
+    if (destroyed) return;
+    currentPrompt = text;
+    controller.setLabel(text);
+  }
+
+  // 返回当前会话标签以恢复交互输入。
+  function getLabel(): string {
+    return currentPrompt;
+  }
+
+  const runtime = commands ? createCommandRuntime(commands, write, { read, present, setPrompt }) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
-  function record(text: string): void {
+  function record(text: string, label = currentPrompt): void {
     const line = document.createElement('div');
     line.className = 'lk-submission';
     const prefix = document.createElement('span');
     prefix.className = 'lk-prompt-prefix';
-    prefix.textContent = prompt;
+    prefix.textContent = label;
     prefix.setAttribute('aria-hidden', 'true');
     const content = document.createElement('span');
     content.className = 'lk-submitted-text';
@@ -61,7 +85,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
 
   // 记录提交原文并交给当前消费模式。
   function submit(text: string): void {
-    if (destroyed) return;
+    if (destroyed || interaction.answer(text)) return;
     record(text);
     if (runtime) void runtime.execute(text);
     else onSubmit?.(text);
@@ -70,8 +94,9 @@ export function createTerminal(options: TerminalOptions): Terminal {
   // 取消当前任务并记录被丢弃的输入。
   function cancel(text: string): void {
     if (destroyed) return;
+    const answering = interaction.isReading();
     runtime?.interrupt();
-    record(`${text}^C`);
+    record(`${answering ? '' : text}^C`);
   }
 
   // 将补全歧义以纯文本候选列表写入当前流。
@@ -85,8 +110,21 @@ export function createTerminal(options: TerminalOptions): Terminal {
     actions.interrupt = cancel;
     actions.complete = runtime.complete;
     actions.suggest = suggest;
+    actions.isReading = isReading;
   }
   const controller = createPrompt(document, prompt, actions);
+  const interaction = createInteraction(controller, record, write, getLabel);
+
+  // 检查当前输入是否属于命令提问。
+  function isReading(): boolean {
+    return interaction.isReading();
+  }
+
+  // 处理流内面板发出的统一中断事件。
+  function interruptPanel(): void {
+    cancel('');
+  }
+  root.addEventListener('lk-interrupt', interruptPanel);
 
   // 将焦点交给仍存活的输入行。
   function focus(): void {
@@ -102,8 +140,9 @@ export function createTerminal(options: TerminalOptions): Terminal {
   function destroy(): void {
     if (destroyed) return;
     destroyed = true;
-    runtime?.interrupt();
     controller.destroy();
+    runtime?.interrupt();
+    root.removeEventListener('lk-interrupt', interruptPanel);
     root.remove();
   }
 
@@ -116,5 +155,5 @@ export function createTerminal(options: TerminalOptions): Terminal {
   root.append(stream, controller.element);
   element.append(root);
   focus();
-  return { write, focus, interrupt, destroy };
+  return { write, focus, interrupt, destroy, setPrompt };
 }

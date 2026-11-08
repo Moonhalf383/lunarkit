@@ -56,7 +56,7 @@ const terminal = createTerminal({
 
 返回的 `write(textOrElement)` 追加安全文本或调用者创建的 DOM 原节点，`focus()` 聚焦输入行，`interrupt()` 取消任务并清空草稿，`destroy()` 移除实例 DOM 与监听器并取消任务。DOM 节点中的事件与资源生命周期由消费端管理。页面卸载或组件销毁时调用 `destroy()`；销毁后再次调用这些方法安全。多个挂载元素可以拥有独立实例。
 
-example 位于 `example/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，example 制品位于 `dist/example/`。库样式内置字体数据，消费时无需请求第三方字体服务。库同时打包 Noto Sans SC Medium 中文字体和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线，减少不同系统的视觉差异；字体覆盖范围以外的字符（如部分 emoji）仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。字体按 Unicode 范围分片加载，库样式内嵌全部字体，打包体积随中文字体增加；`npm run generate:fonts` 可从依赖重新生成无注释的字体声明。
+echo 用例位于 `example/example1/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，echo 制品位于 `dist/example1/`。库样式内置字体数据，消费时无需请求第三方字体服务。库同时打包 Noto Sans SC Medium 中文字体和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线，减少不同系统的视觉差异；字体覆盖范围以外的字符（如部分 emoji）仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。字体按 Unicode 范围分片加载，库样式内嵌全部字体，打包体积随中文字体增加；`npm run generate:fonts` 可从依赖重新生成无注释的字体声明。
 
 ## 命令模式与挂载文件
 
@@ -94,9 +94,42 @@ const terminal = createTerminal({
 
 `createTextFiles` 接受相对路径到文本或 `() => Promise<string>` 的映射，提供 `list(directory?)`、`read(path, signal?)`、`complete(prefix)`。文件集只读，路径限制在挂载根目录；`list` 返回直属条目，目录带 `/` 后缀。第二用例的当前目录固定为挂载根目录，嵌套文件通过相对路径读取。
 
-`example2/src/main.ts` 用 Vite `import.meta.glob` 挂载 `example2/files/` 中的 `.txt`、`.md`、`.json` 文件，惰性载入其原文。新增文件放入该目录后重新构建即可发布，内容会成为可公开读取的前端资源，应仅存放可分发的文件。`help`、`ls`、`cat` 的业务配置及帮助布局在 `example2/src/`，库提供通用命令与输出能力。
+`example/example2/src/main.ts` 用 Vite `import.meta.glob` 挂载 `example/example2/files/` 中的 `.txt`、`.md`、`.json` 文件，惰性载入其原文。新增文件放入该目录后重新构建即可发布，内容会成为可公开读取的前端资源，应仅存放可分发的文件。`help`、`ls`、`cat` 的业务配置及帮助布局在 `example/example2/src/`，库提供通用命令与输出能力。
 
-`npm run build` 构建库及两个用例，第二用例产物在 `dist/example2/`；可通过 `npm run preview:example2` 检查静态部署效果。
+`npm run build` 构建库及三个用例，第二用例产物在 `dist/example2/`；可通过 `npm run preview:example2` 检查静态部署效果。
+
+## 通用交互接口与 example3
+
+```sh
+npm run dev:example3
+```
+
+第三用例位于 `example/example3/`，提供 whoami、cd、login、ls、cat、minivim、pwd、help、exit。演示账号 `admin`、`user1`、`user2` 的公开测试密码均为 `lunarkit`。输入 `login` 后等待 3 秒连接动画，再输入用户名和无回显密码。登录后显示 LunarService 欢迎信息，cat 呈现加载进度，Markdown 文档直接在流中排版。
+
+用户根目录在各自工作区内显示为 `/`；admin 将其他用户目录挂载在 `/user1`、`/user2`，编辑结果共享内存。退出登录保留本页面修改，刷新页面重置。**这是前端交互演示，账号与文件随前端代码公开，不提供真实服务端认证或安全存储。**
+
+minivim 是 example3 的消费端面板，窗口最多 15 行：普通模式 `hjkl` 移动，`i` / `a` 插入，`Esc` 返回；`:w` 保存，`:q` 退出，`:wq` 保存退出，`:q!` 放弃修改，Ctrl+C 取消。编辑和保存均发生在页面内存。
+
+SDK 新增的是可复用的通用接口：
+
+- `context.read({ prompt, secret? })`：复用输入行提问；秘密回答无回显、固定光标，排除输出与历史，拦截复制／剪切。回答仅交给命令处理器，仍属于浏览器内存中的数据。
+- `context.setPrompt(text)` / `terminal.setPrompt(text)`：动态更新当前输入行标签，既有提交保持原标签。
+- `context.present(panel)`：等待消费端流内面板关闭。`InteractivePanel` 提供 `element`、`closed: Promise<void>`、`focus()`、`dispose()`；关闭、Ctrl+C 或销毁均释放面板并恢复 shell。
+- `showLoading({ label, duration, kind?, signal, write })`：通用 spinner／进度条；时长和文案由消费端决定，取消会清理计时器。
+- `renderMarkdown(text)`：生成安全 Markdown 节点，标题最大 1.5em，原始 HTML 显示为文本，链接限制协议；由 `write()` 插入输出流。
+
+```ts
+import type { CommandContext } from 'lunarkit';
+
+// 消费端自行定义业务提问和会话策略。
+async function greet(context: CommandContext): Promise<void> {
+  const name = await context.read({ prompt: 'Your name:' });
+  context.setPrompt(`${name} ❯`);
+  context.write(`Hello, ${name}.`);
+}
+```
+
+**源码边界**：`src/` 提供命令、输入、面板生命周期、渲染与加载能力；账号密码、用户目录／权限、命令集合、Vim 键位和界面、欢迎文案及模拟延迟全部位于 `example/example3/src/`。SDK 不导出模拟服务器、内存用户文件系统或 minivim。
 
 ## 目录
 
@@ -106,14 +139,18 @@ src/
   commands/           参数解析、补全与可取消命令运行态
   files/              只读文本文件挂载
   input/              输入行与历史草稿状态
-  terminal/           终端公开类型与流式输出
+  terminal/           终端公开类型、提问与面板生命周期
+  output/             通用加载提示与安全 Markdown 渲染
   theme/              主题及字体
   index.ts            库公开入口
 example/
-  src/                原样回显消费用例与页面样式
-example2/
-  files/              可公开分发的挂载文本文件
-  src/                help、ls、cat 消费配置与双栏帮助布局
+  example1/           原样回显消费用例
+  example2/           只读文件挂载与命令帮助用例
+  example3/
+    src/
+      files/          演示内存工作区与挂载规则
+      editor/         消费端 minivim 界面与键位
+      service.ts      演示会话、九个命令和登录流程
 tests/
   unit/               状态、纯文本安全和生命周期测试
   browser/            Chromium 交互与视觉属性测试
@@ -129,10 +166,10 @@ npx playwright install chromium
 npm run check
 npm audit
 mkd lint --all
-mkd target second_stage --check
+mkd target third_stage --check
 ```
 
-`check` 包含严格类型检查、ESLint、中文单行注释检查、单元测试、库和两个 example 构建、构建产物的 NodeNext 类型消费检查、开发页面与生产产物的浏览器测试。浏览器截图写入未追踪的 `test-results/`。输入法测试通过合成组合事件验证提交边界；真实系统输入法体验可在本地手动复核。
+`check` 包含严格类型检查、ESLint、中文单行注释检查、单元测试、库和三个 example 构建、构建产物的 NodeNext 类型消费检查、开发页面与生产产物的浏览器测试。浏览器截图写入未追踪的 `test-results/`。输入法测试通过合成组合事件验证提交边界；真实系统输入法体验可在本地手动复核。
 
 开发规范见 `.mkd/development.mf`：函数和类附扼要中文单行注释，易混淆变量说明意图，其余位置保持无注释。`tooling/check-comments.mjs` 检查注释位置和形式；变量是否易混淆及注释是否准确仍需代码审查。
 
@@ -140,4 +177,4 @@ mkd target second_stage --check
 
 ## 阶段边界
 
-`first_stage` 交付 echo 用例，`second_stage` 交付命令模式与挂载文件的 example2。echo 用例中的 `clear`、`help` 仍原样打印；example2 通过消费配置提供 `help`、`ls`、`cat`。完整愿景保留在 `.mkd/main.mf` 的 `start`，Context 与更丰富的组件生命周期等能力由后续阶段推进。
+`first_stage` 交付 echo 用例，`second_stage` 交付命令模式与挂载文件的 example2，`third_stage` 交付通用交互能力及 example3 模拟服务器。echo 用例中的 `clear`、`help` 仍原样打印；example2 通过消费配置提供 `help`、`ls`、`cat`。完整愿景保留在 `.mkd/main.mf` 的 `start`，Context 与更丰富的组件生命周期等能力由后续阶段推进。

@@ -1,0 +1,49 @@
+html, body {
+  margin: 0;
+  min-width: 240px;
+  background: #fff;
+  color: #000;
+}
+#app { min-height: 100dvh; }
+.service-banner {
+  margin: 24px 0 8px;
+  font-size: clamp(28px, 7vw, 88px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.06em;
+  overflow-wrap: anywhere;
+}
+.service-banner + p { white-space: pre-wrap; }
+.minivim {
+  margin-block: 1em;
+  height: 15lh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 1lh;
+  border-block: 1px solid #000;
+  overflow: hidden;
+}
+.minivim:has(.minivim-command:not([hidden])) {
+  grid-template-rows: minmax(0, 1fr) 1lh 1lh;
+}
+.minivim-buffer, .minivim-command {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font: inherit;
+  caret-color: #000;
+}
+.minivim-buffer { overflow: auto; }
+.minivim-status {
+  overflow: hidden;
+  white-space: pre;
+  background: #000;
+  color: #fff;
+}

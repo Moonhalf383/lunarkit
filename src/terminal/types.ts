@@ -14,5 +14,6 @@ export interface Terminal {
   write: (output: TerminalOutput) => void;
   focus: () => void;
   interrupt: () => void;
+  setPrompt: (text: string) => void;
   destroy: () => void;
 }

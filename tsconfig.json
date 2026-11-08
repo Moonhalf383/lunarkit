@@ -17,5 +17,5 @@
     "baseUrl": ".",
     "paths": {"lunarkit": ["src/index.ts"]}
   },
-  "include": ["src", "example", "example2", "tests", "tooling"]
+  "include": ["src", "example", "tests", "tooling"]
 }

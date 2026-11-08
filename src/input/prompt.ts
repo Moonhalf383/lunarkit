@@ -7,6 +7,9 @@ export interface PromptController {
   focus: () => void;
   destroy: () => void;
   clear: () => string;
+  setLabel: (text: string) => void;
+  setSecret: (secret: boolean) => void;
+  setVisible: (visible: boolean) => void;
 }
 
 export interface PromptActions {
@@ -15,6 +18,7 @@ export interface PromptActions {
   interrupt?: (text: string) => void;
   complete?: (text: string, cursor: number) => CompletionResult;
   suggest?: (candidates: readonly string[]) => void;
+  isReading?: () => boolean;
 }
 
 // 创建支持原生编辑、输入法和历史导航的输入行。
@@ -43,6 +47,9 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   const history = createInputHistory();
   // 输入法组合期间的回车交给浏览器确认候选词。
   let composing = false;
+  // 密码输入只留在原生输入值中，镜像和光标位置保持空白。
+  let secret = false;
+  let disposed = false;
   // 每次操作重置空闲倒计时，确保移动时光标始终可见。
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -62,12 +69,19 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   // 操作后先保持光标常亮，再等待空闲恢复闪烁。
   function markActivity(): void {
     stopBlinking();
-    if (document.activeElement === input && !composing) idleTimer = setTimeout(resumeBlinking, 550);
+    if (!disposed && document.activeElement === input && !composing) idleTimer = setTimeout(resumeBlinking, 550);
   }
 
   // 同步完整文本镜像及按字符测量的块状光标。
   function render(): void {
-    updateCaret(input, mirror, caret);
+    if (secret) {
+      mirror.replaceChildren(document.createTextNode('\u200b'));
+      caret.style.left = '0px';
+      caret.style.top = '0.3em';
+      caret.style.width = '1ch';
+      caret.style.height = '1em';
+      caret.hidden = false;
+    } else updateCaret(input, mirror, caret);
   }
 
   // 输入和选区变化均重置空闲时间并更新光标。
@@ -114,24 +128,35 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     if (composing || event.isComposing || event.keyCode === 229) return;
     if (event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'c' && actions.interrupt) {
       const selection = document.getSelection();
-      if (input.selectionStart !== input.selectionEnd || (selection && !selection.isCollapsed)) return;
+      if (!secret && (input.selectionStart !== input.selectionEnd || (selection && !selection.isCollapsed))) return;
       event.preventDefault();
       actions.interrupt(clear());
+    } else if (actions.isReading?.() && event.key === 'Tab') {
+      if (!event.shiftKey) event.preventDefault();
     } else if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && actions.complete) {
       event.preventDefault();
       complete();
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      if (actions.isBusy?.()) return;
+      if (actions.isBusy?.() && !actions.isReading?.()) return;
       const text = input.value;
-      history.remember(text);
+      if (!actions.isReading?.()) history.remember(text);
       restore('');
       actions.submit(text);
     } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (actions.isReading?.()) {
+        event.preventDefault();
+        return;
+      }
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
       restore(event.key === 'ArrowUp' ? history.previous(input.value) : history.next(input.value));
     }
+  }
+
+  // 密码只交给回答处理器，拦截原生复制及剪切导出。
+  function protectSecret(event: ClipboardEvent): void {
+    if (secret) event.preventDefault();
   }
 
   // 标记输入法组合开始。
@@ -151,18 +176,45 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     if (document.activeElement === input) handleActivity();
   }
 
+  // 更新当前输入行标签，历史标签由终端独立保存。
+  function setLabel(text: string): void {
+    prefix.textContent = text;
+  }
+
+  // 切换秘密输入的视觉和辅助语义并清除旧草稿。
+  function setSecret(enabled: boolean): void {
+    if (disposed) return;
+    clear();
+    secret = enabled;
+    input.classList.toggle('lk-input-secret', enabled);
+    input.setAttribute('aria-label', enabled ? '密码' : '输入内容');
+    render();
+  }
+
+  // 在流内面板接管键盘期间暂停显示输入行。
+  function setVisible(visible: boolean): void {
+    if (disposed) return;
+    element.hidden = !visible;
+    if (visible) focus();
+  }
+
   // 将键盘焦点移到输入框。
   function focus(): void {
+    if (disposed) return;
     input.focus({ preventScroll: true });
     render();
   }
 
   // 移除输入框监听器并释放全局选择监听。
   function destroy(): void {
+    disposed = true;
+    input.value = '';
     stopBlinking();
     observer?.disconnect();
     document.fonts?.removeEventListener('loadingdone', render);
     document.removeEventListener('selectionchange', handleSelection);
+    input.removeEventListener('copy', protectSecret);
+    input.removeEventListener('cut', protectSecret);
     input.removeEventListener('focus', handleActivity);
     input.removeEventListener('blur', stopBlinking);
     input.removeEventListener('input', handleActivity);
@@ -173,6 +225,8 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     element.remove();
   }
 
+  input.addEventListener('copy', protectSecret);
+  input.addEventListener('cut', protectSecret);
   input.addEventListener('focus', handleActivity);
   input.addEventListener('blur', stopBlinking);
   input.addEventListener('input', handleActivity);
@@ -186,5 +240,5 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   editor.append(mirror, input, caret);
   element.append(prefix, editor);
   render();
-  return { element, focus, destroy, clear };
+  return { element, focus, destroy, clear, setLabel, setSecret, setVisible };
 }

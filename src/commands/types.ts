@@ -1,9 +1,30 @@
 export type TerminalOutput = string | HTMLElement;
 
+export interface ReadOptions {
+  prompt: string;
+  secret?: boolean;
+}
+
+export interface InteractivePanel {
+  element: HTMLElement;
+  closed: Promise<void>;
+  focus: () => void;
+  dispose: () => void;
+}
+
+export interface CommandInteraction {
+  read: (options: ReadOptions, signal: AbortSignal) => Promise<string>;
+  present: (panel: InteractivePanel, signal: AbortSignal) => Promise<void>;
+  setPrompt: (text: string) => void;
+}
+
 export interface CommandContext {
   args: readonly string[];
   signal: AbortSignal;
   write: (output: TerminalOutput) => void;
+  read: (options: ReadOptions) => Promise<string>;
+  present: (panel: InteractivePanel) => Promise<void>;
+  setPrompt: (text: string) => void;
 }
 
 export interface CompletionContext {
