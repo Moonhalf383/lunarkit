@@ -13,6 +13,7 @@ export function createInteraction(
   let pending: { answer: (text: string) => void; secret: boolean; label: string } | undefined;
   // 面板和提问独占输入，避免并发交互互相恢复焦点。
   let panelActive = false;
+  let activeElement: HTMLElement | undefined;
 
   // 判断当前提交是否属于交互回答。
   function isReading(): boolean {
@@ -23,7 +24,7 @@ export function createInteraction(
   function answer(text: string): boolean {
     if (!pending) return false;
     const current = pending;
-    if (!current.secret) record(text, current.label);
+    record(current.secret ? '' : text, current.label);
     current.answer(text);
     return true;
   }
@@ -72,6 +73,7 @@ export function createInteraction(
       return Promise.reject(new Error('An interaction is already active.'));
     }
     panelActive = true;
+    activeElement = panel.element;
     return new Promise<void>(wait);
     // 等待面板关闭或命令取消。
     function wait(resolve: () => void, reject: (reason: unknown) => void): void {
@@ -81,6 +83,7 @@ export function createInteraction(
         if (finished) return false;
         finished = true;
         panelActive = false;
+        activeElement = undefined;
         signal.removeEventListener('abort', abort);
         panel.element.removeEventListener('keydown', keydown);
         const ownedFocus = panel.element.contains(panel.element.ownerDocument.activeElement);
@@ -130,10 +133,15 @@ export function createInteraction(
     }
   }
 
+  // 返回当前面板节点，避免历史裁剪拆除仍在使用的控件。
+  function getPanel(): HTMLElement | undefined {
+    return activeElement;
+  }
+
   // 命令结束时仅恢复未被提问或面板占用的输入行。
   function restoreShell(ownedFocus?: boolean): void {
     if (!pending && !panelActive) restore(ownedFocus);
   }
 
-  return { isReading, answer, read, present, restoreShell };
+  return { isReading, getPanel, answer, read, present, restoreShell };
 }

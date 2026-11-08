@@ -1,4 +1,5 @@
 import { createInteraction } from './interaction.js';
+import { trimHistory } from './history.js';
 import { createCommandRuntime } from '../commands/runtime.js';
 import type { InteractivePanel, ReadOptions, TerminalOutput } from '../commands/types.js';
 import { createPrompt } from '../input/prompt.js';
@@ -9,6 +10,8 @@ import type { Terminal, TerminalOptions } from './types.js';
 export function createTerminal(options: TerminalOptions): Terminal {
   const { element, banner, prompt = '❯', onSubmit, commands } = options;
   let currentPrompt = prompt;
+  const maxHistoryLines = options.maxHistoryLines ?? 500;
+  if (!Number.isSafeInteger(maxHistoryLines) || maxHistoryLines < 1) throw new RangeError('maxHistoryLines must be a positive safe integer.');
   if (commands && onSubmit) throw new Error('Choose commands or onSubmit for this terminal.');
   const document = element.ownerDocument;
   const root = document.createElement('section');
@@ -31,9 +34,33 @@ export function createTerminal(options: TerminalOptions): Terminal {
   let restoreOwnedFocus = false;
   root.tabIndex = -1;
 
-  // 将最新输入行滚动到可见区域。
+  let scrollFrame: number | undefined;
+  const view = document.defaultView;
+
+  // 在布局稳定后滚动到当前输入行或最新输出，不依赖隐藏输入框。
+  function scrollToLatest(): void {
+    scrollFrame = undefined;
+    if (destroyed) return;
+    const panel = interaction.getPanel();
+    if (panel) {
+      const focused = document.activeElement;
+      if (focused && panel.contains(focused)) focused.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+      return;
+    }
+    const target = controller.element.hidden ? stream.lastElementChild : controller.element;
+    target?.scrollIntoView?.({ block: 'end', behavior: 'instant' });
+  }
+
+  // 合并同一帧的输出、布局与输入行可见性变化。
   function revealPrompt(): void {
-    controller.element.scrollIntoView?.({ block: 'nearest' });
+    if (!destroyed && scrollFrame === undefined && view?.requestAnimationFrame) scrollFrame = view.requestAnimationFrame(scrollToLatest);
+  }
+
+  // 富内容可原地更新，重新收敛历史并安排末尾滚动。
+  function updateStream(): void {
+    if (destroyed) return;
+    trimHistory(stream, maxHistoryLines, interaction.getPanel());
+    revealPrompt();
   }
 
   // 向当前流写入保留空白的安全文本或消费端创建的节点。
@@ -44,7 +71,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     if (typeof output === 'string') line.textContent = output;
     else line.append(output);
     stream.append(line);
-    revealPrompt();
+    updateStream();
   }
 
   // 将命令上下文中的提问转交给终端交互管理器。
@@ -78,6 +105,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     controller.setVisible(!hidden, ownedFocus);
     if (hidden && ownedFocus) root.focus({ preventScroll: true });
     root.setAttribute('aria-busy', String(busy));
+    updateStream();
   }
 
   // 运行态通知只用于通用交互生命周期，具体业务由消费端管理。
@@ -102,7 +130,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     content.textContent = text;
     line.append(prefix, content);
     stream.append(line);
-    revealPrompt();
+    updateStream();
   }
 
   // 记录提交原文并交给当前消费模式。
@@ -136,6 +164,22 @@ export function createTerminal(options: TerminalOptions): Terminal {
   }
   const controller = createPrompt(document, prompt, actions);
   const interaction = createInteraction(controller, record, write, getLabel, restoreInput);
+  // 面板内部键入和光标镜像并非新输出，不应重置页面滚动位置。
+  function streamChanged(records: MutationRecord[]): void {
+    const panel = interaction.getPanel();
+    for (const record of records) {
+      if (!panel?.contains(record.target)) {
+        updateStream();
+        return;
+      }
+    }
+  }
+  const streamObserver = new MutationObserver(streamChanged);
+  streamObserver.observe(stream, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
+  const visibilityObserver = new MutationObserver(revealPrompt);
+  visibilityObserver.observe(controller.element, { attributes: true, attributeFilter: ['hidden'] });
+  const layoutObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(revealPrompt);
+  layoutObserver?.observe(root);
 
   // 检查当前输入是否属于命令提问。
   function isReading(): boolean {
@@ -172,6 +216,10 @@ export function createTerminal(options: TerminalOptions): Terminal {
   function destroy(): void {
     if (destroyed) return;
     destroyed = true;
+    streamObserver.disconnect();
+    visibilityObserver.disconnect();
+    layoutObserver?.disconnect();
+    if (scrollFrame !== undefined) view?.cancelAnimationFrame(scrollFrame);
     controller.destroy();
     runtime?.interrupt();
     root.removeEventListener('keydown', busyKeydown);

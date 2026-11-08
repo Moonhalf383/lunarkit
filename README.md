@@ -54,6 +54,10 @@ const terminal = createTerminal({
 });
 ```
 
+历史输出默认最多保留 **500 个逻辑行**，用 `maxHistoryLines` 正整数配置，例如 `createTerminal({ element, maxHistoryLines: 1000 })`。纯文本按显式换行统计，富内容按块元素和 `<br>` 统计；软换行、banner 和当前输入行不计入。超过上限从最早完整记录删除，单条超长纯文本仅保留末尾行。为避免破坏节点结构，单条超长富内容保留为完整最新记录；活跃面板和加载节点在结束前暂不裁剪。此配置限制历史容量，不限制可见窗口高度，也不改变 ↑ / ↓ 命令输入历史。
+
+新增输出、加载更新和内容高度变化后，终端自动将最新内容滚动到视口内，加载时不依赖已隐藏的输入行；滚动不会改变外部输入的焦点。
+
 返回的 `write(textOrElement)` 追加安全文本或调用者创建的 DOM 原节点，`focus()` 聚焦输入行，`interrupt()` 取消任务并清空草稿，`destroy()` 移除实例 DOM 与监听器并取消任务。DOM 节点中的事件与资源生命周期由消费端管理。页面卸载或组件销毁时调用 `destroy()`；销毁后再次调用这些方法安全。多个挂载元素可以拥有独立实例。
 
 echo 用例位于 `example/example1/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，echo 制品位于 `dist/example1/`。库样式内置字体数据，消费时无需请求第三方字体服务。库同时打包 Noto Sans SC Medium 中文字体和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线，减少不同系统的视觉差异；字体覆盖范围以外的字符（如部分 emoji）仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。字体按 Unicode 范围分片加载，库样式内嵌全部字体，打包体积随中文字体增加；`npm run generate:fonts` 可从依赖重新生成无注释的字体声明。
@@ -112,7 +116,7 @@ minivim 是 example3 的消费端面板，窗口最多 15 行：普通模式显�
 
 SDK 新增的是可复用的通用接口：
 
-- `context.read({ prompt, secret? })`：复用输入行提问；秘密回答无回显、固定光标，排除输出与历史，拦截复制／剪切。回答仅交给命令处理器，仍属于浏览器内存中的数据。
+- `context.read({ prompt, secret? })`：复用输入行提问；秘密回答无回显、固定光标，答案排除输出与历史；提交后保留提问标签和空白答案行，拦截复制／剪切。回答仅交给命令处理器，仍属于浏览器内存中的数据。
 - `context.setPrompt(text)` / `terminal.setPrompt(text)`：动态更新当前输入行标签，既有提交保持原标签。
 - `context.present(panel)`：等待消费端流内面板关闭。`InteractivePanel` 提供 `element`、`closed: Promise<void>`、`focus()`、`dispose()`；关闭、Ctrl+C 或销毁均释放面板并恢复 shell。
 - `showLoading({ label, duration, kind?, signal, write })`：通用 spinner／进度条；时长和文案由消费端决定，取消会清理计时器。

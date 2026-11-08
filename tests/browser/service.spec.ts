@@ -23,6 +23,7 @@ async function login(page: Page, user = 'user1'): Promise<void> {
   await expect(page.getByRole('log')).not.toContainText('lunarkit');
   await password.press('Enter');
   await expect(page.locator('.lk-loading').last()).toContainText('Connecting');
+  await expect(page.locator('.lk-terminal')).toHaveCSS('outline-style', 'none');
   await expect(page.locator('.lk-prompt')).toBeHidden();
   await expect(page.locator('.lk-input')).toBeDisabled();
   await page.clock.runFor(1500);
@@ -165,6 +166,8 @@ async function failures({ page }: { page: Page }): Promise<void> {
   await secret.fill('wrong-password');
   await secret.press('Enter');
   await expect(page.locator('.lk-output').last()).toHaveText('Permission denied.');
+  await expect(page.locator('.lk-submission').last()).toHaveText('user2@lunarservice password:');
+  await expect(page.locator('.lk-submission').last().locator('.lk-submitted-text')).toBeEmpty();
   await expect(page.locator('.lk-terminal')).not.toContainText('wrong-password');
   await login(page);
   await execute(page, 'cat readme.md');
@@ -222,6 +225,51 @@ async function cursorGeometry({ page }: { page: Page }): Promise<void> {
   await expect(caret).toBeVisible();
 }
 
+// 验证隐藏输入的加载和后续 Markdown 输出均将最新内容保持在视口内。
+async function followsOutput({ page }: { page: Page }): Promise<void> {
+  await page.setViewportSize({ width: 640, height: 320 });
+  await page.clock.install();
+  await page.goto('http://127.0.0.1:4176/');
+  await login(page);
+  for (let index = 0; index < 12; index += 1) await execute(page, 'help');
+  await execute(page, 'cat readme.md');
+  await page.clock.runFor(100);
+  const loading = await page.locator('.lk-loading').last().boundingBox();
+  expect(loading!.y + loading!.height).toBeLessThanOrEqual(321);
+  await expect(page.locator('.lk-terminal')).toHaveCSS('outline-style', 'none');
+  await page.clock.runFor(1000);
+  const prompt = await page.locator('.lk-prompt').boundingBox();
+  expect(prompt!.y + prompt!.height).toBeLessThanOrEqual(321);
+  expect(prompt!.y).toBeGreaterThanOrEqual(0);
+  await expect(page.locator('.lk-markdown')).toBeVisible();
+}
+
+// 验证窄高视口中编辑器内部光标更新不会将页面拉向面板底部。
+async function panelScroll({ page }: { page: Page }): Promise<void> {
+  await page.setViewportSize({ width: 640, height: 320 });
+  await page.clock.install();
+  await page.goto('http://127.0.0.1:4176/');
+  await login(page);
+  await execute(page, 'minivim notes.txt');
+  await page.clock.runFor(100);
+  // 将面板首行放在视口顶部以模拟阅读编辑位置。
+  function alignPanel(): number {
+    const panel = document.querySelector('.minivim')!;
+    window.scrollBy(0, panel.getBoundingClientRect().top);
+    return window.scrollY;
+  }
+  const before = await page.evaluate(alignPanel);
+  const buffer = page.getByRole('textbox', { name: '编辑文件', exact: true });
+  await buffer.press('l');
+  await buffer.press('h');
+  await page.clock.runFor(100);
+  // 读取页面位置，验证内部镜像更新不被视为新输出。
+  function scrollPosition(): number { return window.scrollY; }
+  expect(await page.evaluate(scrollPosition)).toBe(before);
+}
+
+test('example3 面板内部更新不抢滚动', panelScroll);
+test('example3 加载和输出自动跟随末尾', followsOutput);
 test('example3 Vim 模式光标与滚动', cursorGeometry);
 test('example3 错误登录与加载取消', failures);
 test('example3 登录与工作目录', session);

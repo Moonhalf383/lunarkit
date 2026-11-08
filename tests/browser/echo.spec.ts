@@ -197,6 +197,22 @@ async function clipboardPaste({ page }: { page: Page }): Promise<void> {
   expect(await page.locator('.lk-output').textContent()).toBe(text);
 }
 
+// 验证默认五百行历史上限在真实浏览器保留超长输出的末尾。
+async function boundedHistory({ page }: { page: Page }): Promise<void> {
+  await page.goto('/');
+  const input = page.getByRole('textbox');
+  const lines: string[] = [];
+  for (let index = 0; index < 520; index += 1) lines.push(`line-${index}`);
+  await input.fill(lines.join('\n'));
+  await input.press('Enter');
+  await expect(page.locator('.lk-stream > *')).toHaveCount(1);
+  await expect(page.locator('.lk-output')).toHaveText(lines.slice(-500).join('\n'));
+  await input.fill('latest');
+  await input.press('Enter');
+  await expect(page.locator('.lk-output')).toHaveText('latest');
+}
+
+test('历史默认最多五百行', boundedHistory);
 test('默认居中布局', centeredLayout);
 test('换行边界光标定位', caretWrapping);
 test('原生多行粘贴', clipboardPaste);

@@ -7,6 +7,7 @@ const options: TerminalOptions = {
   banner: 'LunarKit',
   paddingInline: '5vw',
   maxWidth: 1080,
+  maxHistoryLines: 500,
 };
 
 const terminal = createTerminal(options);
