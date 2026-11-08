@@ -22,7 +22,7 @@
 > second_stage
 > service_example
 交付通用流内交互 SDK 能力，以及包含内存工作区和模拟服务器的第三个消费用例。
-通过 npm run check 的类型、规范、构建与消费声明验证，以及 24 项单元测试、22 项开发页测试、3 项生产产物测试；具体记录见 verification.md。
+通过 npm run check 的类型、规范、构建与消费声明验证，以及 26 项单元测试、23 项开发页测试、3 项生产产物测试；具体记录见 verification.md。
 - 以 third-example.mf 定义的交互、文件、动画、Markdown、编辑器和会话为验收范围。
 
 # start
