@@ -1,3 +1,14 @@
+# SDK 产品化优化实施记录
+
+- 本轮按用户确认范围实施代码、文档与发布准备，保留既有自动化回归；新增跨浏览器、移动端、真实 tgz、性能及辅助技术验收留待后续，实际 npm 发布未执行。
+- 多入口 ESM 提供 core、markdown、charts、models、icons/streamline；Markdown 依赖外置，字体构建依赖转为 devDependencies。基础样式不再内嵌字体，独立 WOFF2 与可选字体 CSS 随包分发，四用例显式导入完整字体。
+- 自有代码采用用户确认的 MIT，第三方许可保留。prepack 重建库，包白名单纳入分块及字体并排除 example 制品。
+- 已实现自动聚焦配置、滚动宿主及跟随模式、场景参数、本地化、补全语义、打字机跳过及整段播报、主题变量、命令状态与错误通道、清理栈、批量／文本流输出、历史缓存和输入历史控制。
+- 提供 templates/starter、docs/api.md、docs/compatibility.md、docs/releasing.md、CHANGELOG 与 GitHub 检查及受保护发布配置。仓库无 remote，repository／homepage／bugs 留待维护者填写，发布脚本对此作阻断检查，未填写虚构地址。
+- npm run check 通过：49 单元、38 开发页 Chromium、4 生产测试，含严格类型、中文注释、库及四用例构建和扩充的公开声明消费。日志 /tmp/lunarkit-sdk-final-check.log。
+- 基础 CSS 构建产物 6920 字节，gzip 2030 字节；字体独立托管。此数值为本地构建产物大小，不代表尚未执行的页面加载性能验收。
+- 用户已有 README 中 do depart 文案修改保留。
+
 # 场景过渡与抵达流程修订验收
 
 - SDK 新增可取消的 `context.nextScene()`，以零历史行数的分页空间保留此前输出；240ms 缓出滚动结束后才允许下一段打字机输出，减少动态效果时立即对齐。动态收敛尾部空间，输入恢复保持当前场景起点。

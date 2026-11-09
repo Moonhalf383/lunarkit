@@ -1,0 +1,36 @@
+> crate::fourth-example::merchant_example
+> crate::development::development_rules
+
+---
+
+# package_assets
+> development_rules
+发布面向终端式网页、个人站及互动叙事的轻量原生 TypeScript SDK。
+- 单 npm 包提供核心、Markdown、图表、模型、Streamline 图标的 ESM 子路径与类型，保留根入口兼容；基础样式不内嵌字体，可选字体 CSS 引用随包分发的独立 WOFF2，四用例显式使用完整字体预设。
+- 自有代码采用 MIT，字体和图标保留各自许可与署名要求；构建依赖和运行依赖与产物策略一致，prepack 重建库，包白名单覆盖分块与字体。
+
+# integration_controls
+> merchant_example
+宿主可控制滚动、主题、焦点及辅助技术体验。
+- autoFocus 默认保持兼容；支持页面或指定容器滚动，always、near-bottom、manual 跟随及回到最新内容接口；过场时长和顶部空间可配置。
+- 主题使用稳定 CSS 变量；messages 覆盖输入、密码、记录、补全标签及通用提示；补全建立选项 ID 与当前项关系。
+- 打字机提供跳过信号及立即显示全文操作，视觉动画与完整消息播报分离，保留取消契约。
+
+# output_lifecycle
+> integration_controls
+稳定输出、命令状态及资源管理接口。
+- 提供命令开始、结束、取消、错误通知与可配置错误展示；通知异常与组件释放异常隔离，清理继续执行。
+- 提供幂等清理栈，托管定时器、监听器和自定义释放回调；提供批量输出及受控文本流句柄，结束或视图释放后迟到更新失效。
+- 历史统计缓存未变化记录并合帧处理富内容变化；输入历史支持容量、过滤和相邻去重配置。
+
+# release_preparation
+> package_assets
+> output_lifecycle
+准备版本化 npm 分发所需模板、文档与流程配置。
+- 提供 Vite TypeScript 起步模板，包含命令、取消、叙事、字体及清理示例；API、浏览器支持、SSR 客户端挂载、安全边界、许可、迁移和发布说明齐全。
+- 提供现有检查 CI 与手动受保护发布配置，npm next／latest 策略及 OIDC 配置步骤；实际 npm 发布需另行确认，仓库地址待所有者提供。
+- 本轮仅运行已有类型、Lint、单元、构建及 Chromium 回归；新增跨浏览器、移动端、真实 tgz 和性能验收留待后续，不作本轮完成声明。
+
+---
+
+> release_preparation
