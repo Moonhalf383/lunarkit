@@ -1,6 +1,12 @@
 import { createIcon, createTerminal, createTextFiles, createPieChart, createBarChart, createLineChart, createProgressBar, createRotatingModel, renderMarkdown, showLoading, typewrite } from 'lunarkit';
 import type { CommandContext, Commands, CompletionContext, InteractivePanel, TerminalOptions } from 'lunarkit';
 import 'lunarkit/style.css';
+import 'lunarkit/fonts/all.css';
+import { createCleanup, finishTypewrite } from 'lunarkit/core';
+import { renderMarkdown as optionalMarkdown } from 'lunarkit/markdown';
+import { createBarChart as optionalBar } from 'lunarkit/charts';
+import { createRotatingModel as optionalModel } from 'lunarkit/models';
+import { createIcon as optionalIcon } from 'lunarkit/icons/streamline';
 
 const options: TerminalOptions = {
   element: document.createElement('main'),
@@ -9,10 +15,27 @@ const options: TerminalOptions = {
   maxWidth: 1080,
   maxHistoryLines: 500,
   inputBottomSpace: 96,
+  autoFocus: false,
+  scroll: { follow: 'near-bottom', threshold: 80, sceneDuration: 200, sceneTopSpace: 12 },
+  messages: { inputLabel: 'Command' },
+  inputHistory: { limit: 100, deduplicate: true },
 };
 
 const terminal = createTerminal(options);
 terminal.write('消费接口类型验证');
+terminal.writeBatch(['one', 'two']);
+const textOutput = terminal.createTextOutput('start');
+textOutput.append('more');
+textOutput.replace('done');
+textOutput.close();
+terminal.scrollToLatest();
+const cleanup = createCleanup();
+cleanup.add(terminal.destroy);
+cleanup.dispose();
+finishTypewrite(optionalMarkdown('text'));
+optionalIcon('box');
+optionalBar({ label: 'Data', data: [] }).dispose();
+optionalModel({ label: 'Mesh', mesh: { vertices: [], faces: [] }, animate: false }).dispose();
 const iconOutput = document.createElement('span');
 iconOutput.append(createIcon('box', { label: 'Box', size: 24 }));
 terminal.write(iconOutput);
@@ -49,6 +72,10 @@ const panel: InteractivePanel = { element: document.createElement('section'), cl
 
 // 验证交互提问、面板及渲染工具的构建声明。
 async function interactive(context: CommandContext): Promise<void> {
+  context.writeBatch(['batch']);
+  const output = context.createTextOutput('stream');
+  output.append(' next');
+  output.close();
   const view = context.openView();
   await context.nextScene();
   view.close();

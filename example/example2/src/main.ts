@@ -1,5 +1,6 @@
 import { createTerminal, createTextFiles } from 'lunarkit';
 import 'lunarkit/style.css';
+import 'lunarkit/fonts/all.css';
 import { createFileCommands } from './commands';
 import './page.css';
 

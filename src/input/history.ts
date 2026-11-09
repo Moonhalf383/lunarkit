@@ -1,3 +1,9 @@
+export interface InputHistoryOptions {
+  limit?: number;
+  filter?: (text: string) => boolean;
+  deduplicate?: boolean;
+}
+
 export interface InputHistory {
   remember: (text: string) => void;
   previous: (draft: string) => string;
@@ -6,7 +12,9 @@ export interface InputHistory {
 }
 
 // 创建独立的输入历史并保留浏览历史前的草稿。
-export function createInputHistory(): InputHistory {
+export function createInputHistory(options: InputHistoryOptions = {}): InputHistory {
+  const limit = options.limit ?? 500;
+  if (!Number.isSafeInteger(limit) || limit < 0) throw new RangeError('Input history limit must be a nonnegative safe integer.');
   const entries: string[] = [];
   // 游标等于历史长度时表示正在编辑当前草稿。
   let position = 0;
@@ -15,7 +23,10 @@ export function createInputHistory(): InputHistory {
 
   // 保存每次提交的原文并重置浏览位置。
   function remember(text: string): void {
-    entries.push(text);
+    if (limit && options.filter?.(text) !== false && (!options.deduplicate || entries.at(-1) !== text)) {
+      entries.push(text);
+      if (entries.length > limit) entries.splice(0, entries.length - limit);
+    }
     reset();
   }
 

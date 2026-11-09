@@ -1,0 +1,43 @@
+name: Publish approved npm version
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: npm distribution tag
+        type: choice
+        options:
+          - next
+          - latest
+        default: next
+      version:
+        description: Exact package.json version approved for publishing
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: vars.NPM_PUBLISH_ENABLED == 'true'
+    environment: npm-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      - name: Match approved version
+        env:
+          APPROVED_VERSION: ${{ inputs.version }}
+          DIST_TAG: ${{ inputs.tag }}
+        run: node tooling/check-release.mjs
+      - name: Publish approved artifact
+        env:
+          DIST_TAG: ${{ inputs.tag }}
+        run: npm publish --access public --tag "$DIST_TAG"

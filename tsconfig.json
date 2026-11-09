@@ -15,7 +15,7 @@
     "skipLibCheck": true,
     "types": ["node", "vite/client"],
     "baseUrl": ".",
-    "paths": {"lunarkit": ["src/index.ts"]}
+    "paths": {"lunarkit": ["src/index.ts"], "lunarkit/core": ["src/core.ts"], "lunarkit/markdown": ["src/output/markdown.ts"], "lunarkit/charts": ["src/visuals/charts.ts"], "lunarkit/models": ["src/visuals/model.ts"], "lunarkit/icons/streamline": ["src/visuals/icons.ts"]}
   },
-  "include": ["src", "example", "tests", "tooling"]
+  "include": ["src", "example", "tests", "tooling", "templates/starter/src"]
 }

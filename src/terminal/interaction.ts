@@ -1,3 +1,4 @@
+import { disposeSafely } from '../lifecycle/cleanup.js';
 import type { InteractivePanel, ReadOptions } from '../commands/types.js';
 import type { PromptController } from '../input/prompt.js';
 
@@ -65,11 +66,11 @@ export function createInteraction(
   // 挂载交互面板，关闭或取消时释放资源并恢复 shell。
   function present(panel: InteractivePanel, signal: AbortSignal): Promise<void> {
     if (signal.aborted) {
-      panel.dispose();
+      disposeSafely(panel);
       return Promise.reject(signal.reason);
     }
     if (pending || panelActive) {
-      panel.dispose();
+      disposeSafely(panel);
       return Promise.reject(new Error('An interaction is already active.'));
     }
     panelActive = true;

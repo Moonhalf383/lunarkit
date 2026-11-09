@@ -1,22 +1,20 @@
-@import './fonts.css';
-
 .lk-terminal {
   box-sizing: border-box;
   outline: none;
   width: 100%;
-  max-width: 1080px;
+  max-width: var(--lk-content-width, 1080px);
   min-height: 100%;
   margin-inline: auto;
   padding-block: clamp(20px, 5vw, 72px);
   padding-inline: clamp(24px, 4vw, 48px);
   padding-bottom: max(clamp(20px, 5vw, 72px), var(--lk-input-bottom-space, 96px));
   overflow-anchor: none;
-  background: #fff;
-  color: #000;
-  font-family: 'Kode Mono', 'LunarKit Prompt', 'Noto Sans SC', monospace;
-  font-size: 16px;
+  background: var(--lk-background, #fff);
+  color: var(--lk-foreground, #000);
+  font-family: var(--lk-font-family, 'Kode Mono', 'LunarKit Prompt', 'Noto Sans SC', monospace);
+  font-size: var(--lk-font-size, 16px);
   font-weight: 500;
-  line-height: 1.6;
+  line-height: var(--lk-line-height, 1.6);
 }
 
 .lk-terminal *,
@@ -37,7 +35,7 @@
 .lk-prompt { position: relative; flex-wrap: wrap; }
 .lk-completions { flex-basis: 100%; max-height: 12em; overflow: auto; font-size: 0.85em; margin-top: 0.35em; }
 .lk-completions [role='option'] { padding: 0.1em 0.4em; }
-.lk-completions [aria-selected='true'] { background: #000; color: #fff; }
+.lk-completions [aria-selected='true'] { background: var(--lk-foreground, #000); color: var(--lk-background, #fff); }
 .lk-completions[hidden] { display: none; }
 .lk-prompt,
 .lk-submission {
@@ -56,7 +54,7 @@
 .lk-editor {
   position: relative;
   isolation: isolate;
-  background: #fff;
+  background: var(--lk-background, #fff);
   flex: 1;
   min-width: 0;
 }
@@ -89,7 +87,7 @@
   resize: none;
   overflow: hidden;
   background: transparent;
-  color: #000;
+  color: var(--lk-foreground, #000);
   caret-color: transparent;
   font: inherit;
   letter-spacing: inherit;
@@ -150,15 +148,20 @@
 .lk-loading { white-space: pre-wrap; overflow-wrap: anywhere; }
 .lk-choices { margin-block: 0.5em 1em; max-height: min(60vh, 28em); overflow: auto; }
 .lk-choices button { outline: none; }
-.lk-choices button:focus-visible { box-shadow: inset 0 0 0 1px currentColor; }
+.lk-choices button:focus-visible { box-shadow: inset 0 0 0 1px var(--lk-focus-color, currentColor); }
 .lk-choice-record { padding: 0.2em 0.5em; }
-.lk-choice-record[data-chosen='true'] { background: #000; color: #fff; }
-.lk-choice-record[data-chosen='false'] { opacity: 0.4; }
+.lk-choice-record[data-chosen='true'] { background: var(--lk-foreground, #000); color: var(--lk-background, #fff); }
+.lk-choice-record[data-chosen='false'] { color: var(--lk-muted, #777); }
 .lk-choices[data-state] { animation: lk-choice-settle 180ms ease-out; }
 @keyframes lk-choice-settle { from { opacity: 0.6; } to { opacity: 1; } }
 .lk-model-dark { background: #090909; color: #fff; }
 .lk-icon { display: inline-block; vertical-align: middle; flex: none; }
 .lk-stream[hidden] { display: none; }
+.lk-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lk-skip-animation { font: inherit; color: inherit; background: var(--lk-background, #fff); border: 1px solid currentColor; cursor: pointer; }
+.lk-skip-animation:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.lk-skip-animation:focus-visible { outline: 2px solid var(--lk-focus-color, currentColor); }
+.lk-typing-controls { height: 0; }
 .lk-scene-boundary { position: relative; pointer-events: none; }
 .lk-scene-anchor { position: absolute; bottom: 0; width: 1px; height: 0; }
 .lk-scene-tail { pointer-events: none; }
@@ -173,7 +176,7 @@
   padding: 0.2em 0.5em;
   cursor: pointer;
 }
-.lk-choices button[aria-pressed='true'] { background: #000; color: #fff; }
+.lk-choices button[aria-pressed='true'] { background: var(--lk-foreground, #000); color: var(--lk-background, #fff); }
 .lk-choices button:disabled { opacity: 0.4; cursor: default; }
 .lk-chart, .lk-progress { margin: 0; width: 100%; }
 .lk-chart svg { display: block; width: 100%; max-height: 180px; overflow: visible; }

@@ -14,6 +14,25 @@ export interface OutputComponent {
 
 export type TerminalOutput = string | HTMLElement | OutputComponent;
 
+export interface TextOutputHandle {
+  append: (text: string) => void;
+  replace: (text: string) => void;
+  close: () => void;
+}
+
+export interface CommandEvent {
+  phase: 'start' | 'end' | 'cancel' | 'error';
+  command: string;
+  error?: unknown;
+}
+
+export interface RuntimeOptions {
+  onCommand?: (event: CommandEvent) => void;
+  onError?: (error: unknown) => void;
+  showErrors?: boolean;
+  unknownCommand?: string;
+}
+
 export interface Choice {
   label: string;
   value: string;
@@ -46,12 +65,16 @@ export interface CommandInteraction {
   setPrompt: (text: string) => void;
   openView?: () => TerminalView;
   nextScene?: (signal: AbortSignal) => Promise<void>;
+  writeBatch?: (outputs: readonly TerminalOutput[]) => void;
+  createTextOutput?: (initial?: string) => TextOutputHandle;
 }
 
 export interface CommandContext {
   args: readonly string[];
   signal: AbortSignal;
   write: (output: TerminalOutput) => void;
+  writeBatch: (outputs: readonly TerminalOutput[]) => void;
+  createTextOutput: (initial?: string) => TextOutputHandle;
   read: (options: ReadOptions) => Promise<string>;
   present: (panel: InteractivePanel) => Promise<void>;
   choose: (options: ChooseOptions) => Promise<string>;

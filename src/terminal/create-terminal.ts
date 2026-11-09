@@ -1,11 +1,14 @@
+import { disposeSafely } from '../lifecycle/cleanup.js';
 import { createViews } from './views.js';
 import { createScenes } from './scenes.js';
+import { createScroll } from './scroll.js';
+import { defaultMessages } from './messages.js';
 import type { ViewState } from './views.js';
 import { createInteraction } from './interaction.js';
 import { createChoices } from '../input/choices.js';
-import { trimHistory } from './history.js';
+import { trimHistory, invalidateHistory } from './history.js';
 import { createCommandRuntime } from '../commands/runtime.js';
-import type { ChooseOptions, InteractivePanel, OutputComponent, ReadOptions, TerminalOutput } from '../commands/types.js';
+import type { ChooseOptions, InteractivePanel, OutputComponent, ReadOptions, TerminalOutput, TextOutputHandle } from '../commands/types.js';
 import { createPrompt } from '../input/prompt.js';
 import type { PromptActions } from '../input/prompt.js';
 import type { Terminal, TerminalOptions } from './types.js';
@@ -13,9 +16,12 @@ import type { Terminal, TerminalOptions } from './types.js';
 // 在指定元素中创建独立的流式浏览器终端。
 export function createTerminal(options: TerminalOptions): Terminal {
   const { element, banner, prompt = '❯', onSubmit, commands } = options;
+  const messages = { ...defaultMessages, ...options.messages };
   let currentPrompt = prompt;
   const maxHistoryLines = options.maxHistoryLines ?? 500;
   const inputBottomSpace = options.inputBottomSpace ?? 96;
+  const inputHistoryLimit = options.inputHistory?.limit ?? 500;
+  if (!Number.isSafeInteger(inputHistoryLimit) || inputHistoryLimit < 0) throw new RangeError('Input history limit must be a nonnegative safe integer.');
   if (!Number.isFinite(inputBottomSpace) || inputBottomSpace < 0) throw new RangeError('inputBottomSpace must be finite and nonnegative.');
   if (!Number.isSafeInteger(maxHistoryLines) || maxHistoryLines < 1) throw new RangeError('maxHistoryLines must be a positive safe integer.');
   if (commands && onSubmit) throw new Error('Choose commands or onSubmit for this terminal.');
@@ -29,45 +35,47 @@ export function createTerminal(options: TerminalOptions): Terminal {
   if (options.maxWidth !== undefined) {
     root.style.maxWidth = typeof options.maxWidth === 'number' ? `${options.maxWidth}px` : options.maxWidth;
   }
-  root.setAttribute('aria-label', 'LunarKit');
+  root.setAttribute('aria-label', messages.terminalLabel);
+  const scrolling = createScroll(root, options.scroll);
   let stream: HTMLElement = document.createElement('div');
   stream.className = 'lk-stream';
   stream.setAttribute('role', 'log');
-  stream.setAttribute('aria-label', '交互记录');
+  stream.setAttribute('aria-label', messages.historyLabel);
   stream.setAttribute('aria-live', 'polite');
   const components = new Map<HTMLElement, OutputComponent>();
   let destroyed = false;
   let busy = false;
+  let batchDepth = 0;
+  let streamFrame: number | undefined;
   let priorityBuffer = '';
   // 面板释放焦点后保留本轮输入所有权，供命令最终完成时恢复。
   let restoreOwnedFocus = false;
   root.tabIndex = -1;
 
   let scrollFrame: number | undefined;
+  let forceScroll = false;
   const view = document.defaultView;
 
   // 在布局稳定后滚动到当前输入行或最新输出，不依赖隐藏输入框。
   function scrollToLatest(): void {
     scrollFrame = undefined;
-    if (destroyed || scenes.isActive()) return;
+    if (destroyed || scenes.isActive() || (!forceScroll && !scrolling.shouldFollow())) return;
+    forceScroll = false;
     scenes.refresh();
     const panel = interaction.getPanel();
     if (panel && panel.dataset.scroll !== 'end') {
       const focused = document.activeElement;
-      if (focused && panel.contains(focused)) focused.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+      if (focused && panel.contains(focused)) scrolling.reveal(focused, 0);
       return;
     }
     const prompt = controller.element;
-    const viewportHeight = view?.visualViewport?.height ?? view?.innerHeight ?? 0;
+    const viewportHeight = scrolling.viewport().height;
     const promptTarget = prompt.getBoundingClientRect().height > viewportHeight - inputBottomSpace ? prompt.querySelector('.lk-caret') : prompt;
     const target = panel ?? (prompt.hidden ? stream.lastElementChild : promptTarget);
-    target?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
-    if (target && view) {
-      const viewportBottom = view.visualViewport ? view.visualViewport.offsetTop + view.visualViewport.height : view.innerHeight;
-      const bottom = target.getBoundingClientRect().bottom + inputBottomSpace;
-      if (bottom > viewportBottom) view.scrollBy({ top: bottom - viewportBottom, behavior: 'instant' });
+    if (target) {
+      scrolling.reveal(target, inputBottomSpace);
       const floor = scenes.floor();
-      if (floor && floor.getBoundingClientRect().top > 0) floor.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+      if (floor && floor.getBoundingClientRect().top > scrolling.viewport().top + scrolling.sceneTopSpace) scrolling.align(floor);
     }
   }
 
@@ -78,12 +86,13 @@ export function createTerminal(options: TerminalOptions): Terminal {
 
   // 富内容可原地更新，重新收敛历史并安排末尾滚动。
   function updateStream(): void {
-    if (destroyed) return;
-    trimHistory(stream, maxHistoryLines, interaction.getPanel());
+    if (destroyed || batchDepth) return;
+    invalidateHistory(stream, streamObserver.takeRecords());
+    trimHistory(stream, maxHistoryLines, interaction.getPanel(), true);
     for (const [node, component] of components) {
       if (!views.contains(node)) {
         components.delete(node);
-        component.dispose();
+        disposeSafely(component, reportError);
       }
     }
     revealPrompt();
@@ -92,7 +101,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
   // 向当前流写入保留空白的安全文本或消费端创建的节点。
   function write(output: TerminalOutput): void {
     if (destroyed) {
-      if (typeof output !== 'string' && 'element' in output) output.dispose();
+      if (typeof output !== 'string' && 'element' in output) disposeSafely(output, reportError);
       return;
     }
     const line = document.createElement('div');
@@ -104,6 +113,37 @@ export function createTerminal(options: TerminalOptions): Terminal {
     } else line.append(output);
     stream.append(line);
     updateStream();
+  }
+
+  // 安全传递生命周期错误，宿主通知失败时继续清理。
+  function reportError(error: unknown): void { try { options.onError?.(error); } catch { return; } }
+
+  // 在单次历史收敛中批量挂载输出，减少重复布局与统计。
+  function writeBatch(outputs: readonly TerminalOutput[]): void {
+    batchDepth += 1;
+    try { for (const output of outputs) write(output); }
+    finally { batchDepth -= 1; updateStream(); }
+  }
+
+  // 创建受视图和终端生命周期保护的文本流句柄。
+  function createTextOutput(initial = ''): TextOutputHandle {
+    const node = document.createElement('div');
+    node.textContent = initial;
+    let closed = destroyed;
+    const owner = stream;
+    // 关闭句柄后保留已输出的文本。
+    function close(): void { closed = true; }
+    write({ element: node, dispose: close });
+    // 当前流仍活动且节点未被淘汰时才接受更新。
+    function valid(): boolean {
+      if (stream !== owner || !owner.contains(node)) closed = true;
+      return !closed && !destroyed;
+    }
+    // 累积后续文本，布局更新由观察器合帧托管。
+    function append(text: string): void { if (valid()) node.append(document.createTextNode(text)); }
+    // 替换当前文本，保留同一个历史记录身份。
+    function replace(text: string): void { if (valid()) node.textContent = text; }
+    return { append, replace, close };
   }
 
   // 将命令上下文中的提问转交给终端交互管理器。
@@ -156,7 +196,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     interaction.restoreShell(root.contains(document.activeElement) || detachedFocus);
   }
 
-  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt, openView, nextScene }, busyChanged) : undefined;
+  const runtime = commands ? createCommandRuntime(commands, write, { read, choose, present, setPrompt, openView, nextScene, writeBatch, createTextOutput }, busyChanged, { ...options, unknownCommand: messages.unknownCommand }) : undefined;
 
   // 将提交或取消输入连同提示符追加到记录。
   function record(text: string, label = currentPrompt): void {
@@ -180,7 +220,10 @@ export function createTerminal(options: TerminalOptions): Terminal {
     if (!runtime?.canInterrupt(text) && interaction.answer(text)) return;
     record(text);
     if (runtime) void runtime.execute(text);
-    else onSubmit?.(text);
+    else {
+      try { onSubmit?.(text); }
+      catch (error) { reportError(error); if (options.showErrors !== false) write(error instanceof Error ? error.message : String(error)); }
+    }
   }
 
   // 取消当前任务并记录被丢弃的输入。
@@ -199,20 +242,27 @@ export function createTerminal(options: TerminalOptions): Terminal {
     actions.isReading = isReading;
     actions.canInterrupt = runtime.canInterrupt;
   }
-  const controller = createPrompt(document, prompt, actions);
+  const controller = createPrompt(document, prompt, actions, { messages, history: options.inputHistory });
   const interaction = createInteraction(controller, record, write, getLabel, restoreInput);
   // 面板内部键入和光标镜像并非新输出，不应重置页面滚动位置。
   function streamChanged(records: MutationRecord[]): void {
     const panel = interaction.getPanel();
+    invalidateHistory(stream, records);
     for (const record of records) {
       const target = record.target.nodeType === 1 ? record.target as Element : record.target.parentElement;
       if (target?.closest('[data-transient="true"]')) continue;
       if (!panel?.contains(record.target)) {
-        updateStream();
+        scheduleStream();
         return;
       }
     }
   }
+  // 合并富内容高频变更，在下一帧重新计算变化记录。
+  function scheduleStream(): void {
+    if (!destroyed && streamFrame === undefined && view?.requestAnimationFrame) streamFrame = view.requestAnimationFrame(flushStream);
+  }
+  // 释放变更标识并统一收敛历史与滚动。
+  function flushStream(): void { streamFrame = undefined; updateStream(); }
   const streamObserver = new MutationObserver(streamChanged);
   streamObserver.observe(stream, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-state'] });
   // 切换会话输出流，同时恢复对应提示符和公开草稿。
@@ -235,7 +285,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     for (const [node, component] of components) {
       if (output.contains(node)) {
         components.delete(node);
-        component.dispose();
+        disposeSafely(component, reportError);
       }
     }
     output.remove();
@@ -321,7 +371,9 @@ export function createTerminal(options: TerminalOptions): Terminal {
     controller.element.removeEventListener('keyup', revealPrompt);
     controller.element.removeEventListener('select', revealPrompt);
     scenes.dispose();
+    scrolling.dispose();
     if (scrollFrame !== undefined) view?.cancelAnimationFrame(scrollFrame);
+    if (streamFrame !== undefined) view?.cancelAnimationFrame(streamFrame);
     controller.destroy();
     runtime?.interrupt();
     root.removeEventListener('pointerdown', resetPriority);
@@ -341,7 +393,7 @@ export function createTerminal(options: TerminalOptions): Terminal {
     root.append(heading);
   }
   root.append(stream, controller.element);
-  const scenes = createScenes(root, getStream, revealPrompt);
+  const scenes = createScenes(root, getStream, revealPrompt, scrolling);
   // 返回当前活动流，分页保持与会话切换一致。
   function getStream(): HTMLElement { return stream; }
   const promptObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(revealPrompt);
@@ -352,6 +404,13 @@ export function createTerminal(options: TerminalOptions): Terminal {
   view?.addEventListener('resize', revealPrompt);
   view?.visualViewport?.addEventListener('resize', revealPrompt);
   element.append(root);
-  focus();
-  return { write, focus, interrupt, destroy, setPrompt, openView };
+  if (options.autoFocus !== false) focus();
+  // 消费端显式恢复跟随，并请求定位最新内容。
+  function scrollToLatestOutput(): void {
+    if (destroyed) return;
+    scrolling.resume();
+    forceScroll = true;
+    revealPrompt();
+  }
+  return { write, writeBatch, createTextOutput, focus, interrupt, destroy, setPrompt, openView, scrollToLatest: scrollToLatestOutput };
 }

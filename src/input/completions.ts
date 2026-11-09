@@ -1,11 +1,16 @@
 import type { CompletionResult } from '../commands/types.js';
 
+let menuSequence = 0;
+
 // 托管输入行下方的临时候选菜单，连续 Tab 在原始候选集中循环。
-export function createCompletionMenu(document: Document, input: HTMLTextAreaElement, apply: (text: string, cursor: number) => void) {
+export function createCompletionMenu(document: Document, input: HTMLTextAreaElement, apply: (text: string, cursor: number) => void, label = 'Completions') {
   const element = document.createElement('div');
   element.className = 'lk-completions';
   element.setAttribute('role', 'listbox');
-  element.setAttribute('aria-label', 'Completions');
+  element.setAttribute('aria-label', label);
+  element.id = `lk-completions-${++menuSequence}`;
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-haspopup', 'listbox');
   element.hidden = true;
   let result: CompletionResult | undefined;
   let selected = -1;
@@ -18,6 +23,7 @@ export function createCompletionMenu(document: Document, input: HTMLTextAreaElem
     selected = -1;
     element.replaceChildren();
     element.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
     input.removeAttribute('aria-controls');
     input.removeAttribute('aria-activedescendant');
   }
@@ -28,11 +34,16 @@ export function createCompletionMenu(document: Document, input: HTMLTextAreaElem
       const candidate = result!.options![index]!;
       const row = document.createElement('div');
       row.setAttribute('role', 'option');
+      row.id = `${element.id}-${index}`;
       row.setAttribute('aria-selected', String(index === selected));
       row.textContent = candidate.description ? `${candidate.value} — ${candidate.description}` : candidate.value;
       element.append(row);
     }
     element.hidden = false;
+    input.setAttribute('aria-controls', element.id);
+    input.setAttribute('aria-expanded', 'true');
+    if (selected >= 0) input.setAttribute('aria-activedescendant', `${element.id}-${selected}`);
+    else input.removeAttribute('aria-activedescendant');
     element.children[selected]?.scrollIntoView?.({ block: 'nearest' });
   }
   // 保留插入后的文本和位置，以区别用户编辑与下一次循环。

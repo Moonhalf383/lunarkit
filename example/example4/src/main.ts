@@ -1,5 +1,6 @@
 import { createTerminal } from 'lunarkit';
 import 'lunarkit/style.css';
+import 'lunarkit/fonts/all.css';
 import { createMerchant } from './merchant';
 import './page.css';
 

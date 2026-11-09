@@ -5,6 +5,7 @@ export default defineConfig({
   root: fileURLToPath(new URL('../example/example1', import.meta.url)),
   resolve: {
     alias: [
+      { find: 'lunarkit/fonts/all.css', replacement: fileURLToPath(new URL('../src/theme/fonts.css', import.meta.url)) },
       { find: 'lunarkit/style.css', replacement: fileURLToPath(new URL('../src/theme/style.css', import.meta.url)) },
       { find: /^lunarkit$/, replacement: fileURLToPath(new URL('../src/index.ts', import.meta.url)) },
     ],

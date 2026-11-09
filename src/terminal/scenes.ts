@@ -1,5 +1,7 @@
+import type { ScrollController } from './scroll.js';
+
 // 创建可取消的场景分页，并用尾部空间保证旧内容完整离开视口。
-export function createScenes(root: HTMLElement, getStream: () => HTMLElement, reveal: () => void) {
+export function createScenes(root: HTMLElement, getStream: () => HTMLElement, reveal: () => void, scroll: ScrollController) {
   const document = root.ownerDocument;
   const view = document.defaultView;
   const tail = document.createElement('div');
@@ -22,15 +24,15 @@ export function createScenes(root: HTMLElement, getStream: () => HTMLElement, re
     const boundary = document.createElement('div');
     boundary.className = 'lk-scene-boundary';
     boundary.setAttribute('aria-hidden', 'true');
-    boundary.style.height = `${view?.innerHeight ?? 0}px`;
+    boundary.style.height = `${scroll.viewport().height + scroll.sceneTopSpace}px`;
     const anchor = document.createElement('div');
     anchor.className = 'lk-scene-anchor';
     boundary.append(anchor);
     stream.append(boundary);
     root.append(tail);
-    tail.style.height = `${view?.innerHeight ?? 0}px`;
+    tail.style.height = `${scroll.viewport().height}px`;
     const reduced = view?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const duration = reduced ? 0 : 240;
+    const duration = reduced ? 0 : scroll.sceneDuration;
     try {
       await new Promise<void>(animate);
     } finally {
@@ -43,8 +45,8 @@ export function createScenes(root: HTMLElement, getStream: () => HTMLElement, re
     function animate(resolve: () => void, reject: (reason: unknown) => void): void {
       let frame: number | undefined;
       let start: number | undefined;
-      const initial = view?.scrollY ?? 0;
-      const destination = initial + anchor.getBoundingClientRect().top;
+      const initial = scroll.position();
+      const destination = initial + anchor.getBoundingClientRect().top - scroll.viewport().top - scroll.sceneTopSpace;
       // 清理动画及监听，取消时保留已经建立的场景边界。
       function cleanup(): void {
         if (frame !== undefined) view?.cancelAnimationFrame(frame);
@@ -56,10 +58,10 @@ export function createScenes(root: HTMLElement, getStream: () => HTMLElement, re
       function tick(time: number): void {
         start ??= time;
         const progress = duration ? Math.min(1, (time - start) / duration) : 1;
-        view?.scrollTo({ top: initial + (destination - initial) * (1 - (1 - progress) ** 3), behavior: 'instant' });
+        scroll.move(initial + (destination - initial) * (1 - (1 - progress) ** 3));
         if (progress < 1) frame = view?.requestAnimationFrame(tick);
         else {
-          anchor.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+          scroll.align(anchor);
           cleanup();
           resolve();
         }
@@ -83,7 +85,7 @@ export function createScenes(root: HTMLElement, getStream: () => HTMLElement, re
     const anchor = floor();
     const contentHeight = anchor ? tail.getBoundingClientRect().top - anchor.getBoundingClientRect().top : 0;
     const padding = view ? Number.parseFloat(view.getComputedStyle(root).paddingBottom) || 0 : 0;
-    const height = anchor ? Math.max(0, (view?.innerHeight ?? 0) - contentHeight - padding) : 0;
+    const height = anchor ? Math.max(0, scroll.viewport().height - contentHeight - padding) : 0;
     tail.style.height = `${height}px`;
   }
   // 销毁时终止动画并移除分页尾部空间。

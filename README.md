@@ -4,6 +4,27 @@
 
 默认提示符为 `❯`，闪烁块状光标高度等于字号，在文本行内垂直居中：文本中覆盖右侧完整字素的实际宽度，区分全角与半角；空输入、换行和文本末尾使用半角宽。覆盖文字以反色显示，选择文本时隐藏光标。移动、输入、粘贴和历史切换时光标保持常亮，最后一次操作结束 550ms 后恢复闪烁；输入法组合期间及减少动态效果模式下保持常亮。
 
+## SDK 分发与接入
+
+基础样式与可选字体独立分发，推荐使用 `lunarkit/core`；根入口保留完整导出。字体使用独立 WOFF2，默认由消费构建工具按相对路径托管。
+
+```ts
+import { createTerminal } from 'lunarkit/core';
+import 'lunarkit/style.css';
+import 'lunarkit/fonts/kode-mono.css';
+import 'lunarkit/fonts/prompt.css';
+```
+
+按需加入 `lunarkit/fonts/noto-sans-sc.css`，或使用 `lunarkit/fonts/all.css` 保持四个用例的完整字体组合。可选功能入口为 `lunarkit/markdown`、`lunarkit/charts`、`lunarkit/models`、`lunarkit/icons/streamline`。
+
+- [API 与宿主集成](docs/api.md)：滚动与焦点、主题变量、本地化、输出和资源生命周期。
+- [兼容性与安全边界](docs/compatibility.md)：浏览器能力、SSR、CSP 及后续验收范围。
+- [发布准备](docs/releasing.md)：npm next／latest、OIDC、仓库地址和账号配置。
+- [起步模板](templates/starter/README.md)：Vite＋TypeScript 个人站／互动叙事模板。
+- [更新与迁移](CHANGELOG.md)。自有代码 MIT，第三方字体与图标保留各自许可。
+
+新增 `autoFocus`、`scroll`、`messages`、`inputHistory`、`onCommand`、`onError`、`showErrors` 配置，以及 `writeBatch`、`createTextOutput`、`scrollToLatest`、`createCleanup` 和打字机跳过能力。实际 npm 发布需维护者另行确认。
+
 ## 本地运行
 
 使用 Node.js 24 LTS（也支持 22.13+ 的 22 LTS）。
@@ -60,7 +81,7 @@ const terminal = createTerminal({
 
 返回的 `write(textOrElement)` 追加安全文本或调用者创建的 DOM 原节点，`focus()` 聚焦输入行，`interrupt()` 取消任务并清空草稿，`destroy()` 移除实例 DOM 与监听器并取消任务。DOM 节点中的事件与资源生命周期由消费端管理。页面卸载或组件销毁时调用 `destroy()`；销毁后再次调用这些方法安全。多个挂载元素可以拥有独立实例。
 
-echo 用例位于 `example/example1/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，echo 制品位于 `dist/example1/`。库样式内置字体数据，消费时无需请求第三方字体服务。库同时打包 Noto Sans SC Medium 中文字体和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线，减少不同系统的视觉差异；字体覆盖范围以外的字符（如部分 emoji）仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。字体按 Unicode 范围分片加载，库样式内嵌全部字体，打包体积随中文字体增加；`npm run generate:fonts` 可从依赖重新生成无注释的字体声明。
+echo 用例位于 `example/example1/src/main.ts`，仅使用公开接口。开发时 Vite 将包名解析到源码；构建输出位于 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`，echo 制品位于 `dist/example1/`。基础样式与字体独立，字体文件随包分发，无需第三方字体服务；消费端显式导入所需字体 CSS。提供 Kode Mono、Noto Sans SC Medium 和用于 `❯` 的 Noto Sans Symbols 2，统一行度量与基线；覆盖范围外字符仍由系统回退。三套字体的 SIL OFL 1.1 许可证位于 `THIRD_PARTY_LICENSES/`。`npm run build:lib` 生成 `dist/fonts/` 的独立 WOFF2 和 CSS；`npm run generate:fonts` 更新开发用例的字体声明。
 
 ## 命令模式与挂载文件
 
@@ -100,7 +121,7 @@ const terminal = createTerminal({
 
 `example/example2/src/main.ts` 用 Vite `import.meta.glob` 挂载 `example/example2/files/` 中的 `.txt`、`.md`、`.json` 文件，惰性载入其原文。新增文件放入该目录后重新构建即可发布，内容会成为可公开读取的前端资源，应仅存放可分发的文件。`help`、`ls`、`cat` 的业务配置及帮助布局在 `example/example2/src/`，库提供通用命令与输出能力。
 
-`npm run build` 构建库及三个用例，第二用例产物在 `dist/example2/`；可通过 `npm run preview:example2` 检查静态部署效果。
+`npm run build` 构建库及四个用例，第二用例产物在 `dist/example2/`；可通过 `npm run preview:example2` 检查静态部署效果。
 
 ## 通用交互接口与 example3
 
@@ -211,7 +232,7 @@ mkd lint --all
 mkd target third_stage --check
 ```
 
-`check` 包含严格类型检查、ESLint、中文单行注释检查、单元测试、库和三个 example 构建、构建产物的 NodeNext 类型消费检查、开发页面与生产产物的浏览器测试。浏览器截图写入未追踪的 `test-results/`。输入法测试通过合成组合事件验证提交边界；真实系统输入法体验可在本地手动复核。
+`check` 包含严格类型检查、ESLint、中文单行注释检查、单元测试、库和四个 example 构建、构建产物的 NodeNext 类型消费检查、开发页面与生产产物的浏览器测试。浏览器截图写入未追踪的 `test-results/`。输入法测试通过合成组合事件验证提交边界；真实系统输入法体验可在本地手动复核。
 
 开发规范见 `.mkd/development.mf`：函数和类附扼要中文单行注释，易混淆变量说明意图，其余位置保持无注释。`tooling/check-comments.mjs` 检查注释位置和形式；变量是否易混淆及注释是否准确仍需代码审查。
 

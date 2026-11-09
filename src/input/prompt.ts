@@ -2,6 +2,9 @@ import type { CompletionResult } from '../commands/types.js';
 import { updateCaret } from './caret.js';
 import { createCompletionMenu } from './completions.js';
 import { createInputHistory } from './history.js';
+import type { InputHistoryOptions } from './history.js';
+import { defaultMessages } from '../terminal/messages.js';
+import type { TerminalMessages } from '../terminal/messages.js';
 
 export interface PromptController {
   element: HTMLDivElement;
@@ -26,7 +29,8 @@ export interface PromptActions {
 }
 
 // 创建支持原生编辑、输入法和历史导航的输入行。
-export function createPrompt(document: Document, label: string, actions: PromptActions): PromptController {
+export function createPrompt(document: Document, label: string, actions: PromptActions, options: { messages?: TerminalMessages; history?: InputHistoryOptions | undefined } = {}): PromptController {
+  const messages = options.messages ?? defaultMessages;
   const element = document.createElement('div');
   element.className = 'lk-prompt';
   const prefix = document.createElement('span');
@@ -43,19 +47,19 @@ export function createPrompt(document: Document, label: string, actions: PromptA
   caret.setAttribute('aria-hidden', 'true');
   const input = document.createElement('textarea');
   input.className = 'lk-input';
-  input.setAttribute('aria-label', '输入内容');
+  input.setAttribute('aria-label', messages.inputLabel);
   input.setAttribute('autocapitalize', 'off');
   input.setAttribute('autocomplete', 'off');
   input.spellcheck = false;
   input.rows = 1;
-  const history = createInputHistory();
+  const history = createInputHistory(options.history);
   // 插入补全并保持编辑器光标与文本镜像同步。
   function applyCompletion(text: string, cursor: number): void {
     input.value = text;
     input.setSelectionRange(cursor, cursor);
     render();
   }
-  const completions = createCompletionMenu(document, input, applyCompletion);
+  const completions = createCompletionMenu(document, input, applyCompletion, messages.completionsLabel);
   // 输入法组合期间的回车交给浏览器确认候选词。
   let composing = false;
   // 密码输入只留在原生输入值中，镜像和光标位置保持空白。
@@ -203,7 +207,7 @@ export function createPrompt(document: Document, label: string, actions: PromptA
     clear();
     secret = enabled;
     input.classList.toggle('lk-input-secret', enabled);
-    input.setAttribute('aria-label', enabled ? '密码' : '输入内容');
+    input.setAttribute('aria-label', enabled ? messages.secretLabel : messages.inputLabel);
     render();
   }
 
