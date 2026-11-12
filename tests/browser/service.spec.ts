@@ -224,7 +224,16 @@ async function cursorGeometry({ page }: { page: Page }): Promise<void> {
   const first = await caret.boundingBox();
   await input.press('l');
   const second = await caret.boundingBox();
-  expect(second!.x - first!.x).toBeCloseTo(width, 1);
+  // 字形包围盒与字符前进距离可不同，直接验证移动后字素的起点。
+  function glyphPosition(): number {
+    const mirror = document.querySelector('.minivim-mirror')!;
+    const range = document.createRange();
+    range.setStart(mirror.firstChild!, 2);
+    range.setEnd(mirror.firstChild!, 4);
+    return range.getBoundingClientRect().left;
+  }
+  expect(second!.x).toBeGreaterThan(first!.x);
+  expect(second!.x).toBeCloseTo(await page.evaluate(glyphPosition), 1);
   for (let index = 0; index < 20; index += 1) await input.press('j');
   const bufferBounds = await input.boundingBox();
   const cursorBounds = await caret.boundingBox();
