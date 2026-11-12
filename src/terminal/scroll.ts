@@ -17,6 +17,7 @@ export function createScroll(root: HTMLElement, options: ScrollOptions = {}) {
   for (const value of [threshold, sceneDuration, sceneTopSpace]) if (!Number.isFinite(value) || value < 0) throw new RangeError('Scroll settings must be finite and nonnegative.');
   let following = true;
   let programmatic = false;
+  let programmaticPosition = 0;
   let frame: number | undefined;
   // 返回滚动视口的顶部坐标和可用高度。
   function viewport(): { top: number; height: number } {
@@ -32,6 +33,7 @@ export function createScroll(root: HTMLElement, options: ScrollOptions = {}) {
     programmatic = true;
     if (container) container.scrollTo({ top, behavior: 'instant' });
     else view.scrollTo({ top, behavior: 'instant' });
+    programmaticPosition = position();
     if (frame !== undefined) view.cancelAnimationFrame(frame);
     frame = view.requestAnimationFrame(settled);
   }
@@ -39,7 +41,7 @@ export function createScroll(root: HTMLElement, options: ScrollOptions = {}) {
   function align(element: Element): void { move(position() + element.getBoundingClientRect().top - viewport().top - sceneTopSpace); }
   // 根据用户阅读位置更新接近底部的跟随状态。
   function changed(): void {
-    if (programmatic) return;
+    if (programmatic && Math.abs(position() - programmaticPosition) < 1) return;
     const bounds = viewport();
     following = root.getBoundingClientRect().bottom <= bounds.top + bounds.height + threshold;
   }
@@ -51,6 +53,10 @@ export function createScroll(root: HTMLElement, options: ScrollOptions = {}) {
   function reveal(element: Element, space: number): void {
     const bounds = viewport();
     const rect = element.getBoundingClientRect();
+    if (rect.height > bounds.height - space) {
+      if (rect.bottom <= bounds.top || rect.top >= bounds.top + bounds.height) move(position() + rect.top - bounds.top);
+      return;
+    }
     if (rect.bottom + space > bounds.top + bounds.height) move(position() + rect.bottom + space - bounds.top - bounds.height);
     else if (rect.top < bounds.top && rect.height < bounds.height - space) move(position() + rect.top - bounds.top);
   }

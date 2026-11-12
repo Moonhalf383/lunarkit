@@ -6,4 +6,5 @@ export default tseslint.config(
   js.configs.recommended,
   tseslint.configs.recommended,
   { languageOptions: { globals: { console: 'readonly', process: 'readonly' } } },
+  { files: ['tests/fixtures/*.js', 'tooling/check-package.mjs'], languageOptions: { globals: { window: 'readonly', document: 'readonly', fetch: 'readonly', setTimeout: 'readonly' } } },
 );

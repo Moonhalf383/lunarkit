@@ -251,6 +251,9 @@ async function panelScroll({ page }: { page: Page }): Promise<void> {
   await page.goto('http://127.0.0.1:4176/');
   await login(page);
   await execute(page, 'minivim notes.txt');
+  // 等待字体布局稳定，排除字体替换引起的浏览器原生滚动锚定。
+  async function fonts(): Promise<void> { await document.fonts.ready; }
+  await page.evaluate(fonts);
   await page.clock.runFor(100);
   // 将面板首行放在视口顶部以模拟阅读编辑位置。
   function alignPanel(): number {

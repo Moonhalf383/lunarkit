@@ -11,6 +11,7 @@ async function setupClock(page: Page): Promise<void> {
   }
   await page.evaluate(waitForFonts);
   await expect(page.getByRole('textbox')).toBeFocused();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
   // 派发同步编辑事件以重新开始可控的空闲计时。
   function resetActivity(input: HTMLTextAreaElement): void {
     input.dispatchEvent(new Event('input'));
@@ -51,7 +52,9 @@ async function compositionAndFocus({ page }: { page: Page }): Promise<void> {
   const input = page.getByRole('textbox');
   const caret = page.locator('.lk-caret');
   await input.dispatchEvent('compositionstart');
-  await input.fill('中文');
+  // 设置组合文本，避免自动填充触发 Firefox 的组合结束事件。
+  function composing(input: HTMLTextAreaElement): void { input.value = '中文'; input.dispatchEvent(new InputEvent('input', { data: '中文', isComposing: true })); }
+  await input.evaluate(composing);
   await page.clock.runFor(2000);
   await expect(caret).toHaveCSS('animation-name', 'none');
   await input.dispatchEvent('compositionend');

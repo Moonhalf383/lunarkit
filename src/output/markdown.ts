@@ -12,10 +12,12 @@ export function renderMarkdown(text: string): HTMLElement {
   }
   renderer.html = escapeHtml;
   const html = marked.parse(text, { async: false, renderer });
-  element.innerHTML = DOMPurify.sanitize(html, {
+  const fragment = DOMPurify.sanitize(html, {
+    RETURN_DOM_FRAGMENT: true,
     ALLOWED_TAGS: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'pre', 'code', 'blockquote', 'a', 'em', 'strong', 'hr', 'br', 'del', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
     ALLOWED_ATTR: ['href', 'title'],
   });
+  element.replaceChildren(fragment);
   for (const link of element.querySelectorAll('a')) {
     const href = link.getAttribute('href') ?? '';
     if (!/^(https?:|mailto:|#)/iu.test(href)) link.removeAttribute('href');

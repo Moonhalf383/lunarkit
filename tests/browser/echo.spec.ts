@@ -13,7 +13,7 @@ async function inspectTheme(page: Page): Promise<unknown> {
     return {
       background: styles.backgroundColor,
       color: styles.color,
-      font: styles.fontFamily,
+      font: styles.fontFamily.replaceAll('"', ''),
       weight: styles.fontWeight,
       fontLoaded: document.fonts.check('500 16px "Kode Mono"'),
       bannerSize: parseFloat(heading.fontSize),
@@ -41,7 +41,7 @@ async function initialAppearance({ page }: { page: Page }): Promise<void> {
   expect(await inspectTheme(page)).toEqual({
     background: 'rgb(255, 255, 255)',
     color: 'rgb(0, 0, 0)',
-    font: '"Kode Mono", "LunarKit Prompt", "Noto Sans SC", monospace',
+    font: 'Kode Mono, LunarKit Prompt, Noto Sans SC, monospace',
     weight: '500',
     fontLoaded: true,
     bannerSize: expect.any(Number),
@@ -97,7 +97,9 @@ async function composition({ page }: { page: Page }): Promise<void> {
   await page.goto('/');
   const input = page.getByRole('textbox');
   await input.dispatchEvent('compositionstart');
-  await input.fill('中文');
+  // 设置组合文本但不调用会主动结束浏览器组合状态的自动填充。
+  function composing(input: HTMLTextAreaElement): void { input.value = '中文'; input.dispatchEvent(new InputEvent('input', { data: '中文', isComposing: true })); }
+  await input.evaluate(composing);
   await input.press('Enter');
   await expect(page.locator('.lk-output')).toHaveCount(0);
   await input.dispatchEvent('compositionend');
@@ -182,6 +184,7 @@ async function caretWrapping({ page }: { page: Page }): Promise<void> {
 
 // 验证浏览器原生剪贴板多行粘贴后的原样输出。
 async function clipboardPaste({ page }: { page: Page }): Promise<void> {
+  test.skip(test.info().project.use.browserName !== 'chromium', 'Playwright clipboard permissions are Chromium-only; native paste remains a manual check on other engines.');
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
   const text = '  粘贴🙂\n第二行  ';

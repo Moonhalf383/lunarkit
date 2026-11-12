@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "A minimal, input-driven browser terminal kit.",
   "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/Moonhalf383/lunarkit.git" },
+  "homepage": "https://github.com/Moonhalf383/lunarkit#readme",
+  "bugs": { "url": "https://github.com/Moonhalf383/lunarkit/issues" },
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
@@ -69,6 +72,8 @@
     "test": "vitest run --config tooling/vitest.config.ts",
     "test:e2e": "playwright test --config tooling/playwright.config.ts",
     "test:production": "playwright test --config tooling/playwright.production.ts",
+    "test:acceptance": "playwright test --config tooling/playwright.acceptance.ts",
+    "test:package": "node tooling/check-package.mjs",
     "test:consumer": "tsc --project tests/consumer/tsconfig.json",
     "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:consumer && npm run test:e2e && npm run test:production",
     "prepack": "npm run build:lib"
