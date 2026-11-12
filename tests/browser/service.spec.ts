@@ -206,13 +206,25 @@ async function cursorGeometry({ page }: { page: Page }): Promise<void> {
   }
   await input.evaluate(selectChinese);
   const caret = page.locator('.minivim-caret');
-  await expect(caret).toHaveCSS('width', '16px');
+  // 等待字体后测量完整中文字素，匹配各浏览器实际字形宽度。
+  async function characterWidth(): Promise<number> {
+    await document.fonts.ready;
+    const mirror = document.querySelector('.minivim-mirror')!;
+    const range = document.createRange();
+    range.setStart(mirror.firstChild!, 0);
+    range.setEnd(mirror.firstChild!, 1);
+    return range.getBoundingClientRect().width;
+  }
+  const width = await page.evaluate(characterWidth);
+  const bounds = await caret.boundingBox();
+  expect(width).toBeGreaterThan(0);
+  expect(bounds!.width).toBeCloseTo(width, 1);
   await expect(caret).toHaveCSS('height', '16px');
   await input.press('l');
   const first = await caret.boundingBox();
   await input.press('l');
   const second = await caret.boundingBox();
-  expect(second!.x - first!.x).toBeCloseTo(16, 1);
+  expect(second!.x - first!.x).toBeCloseTo(width, 1);
   for (let index = 0; index < 20; index += 1) await input.press('j');
   const bufferBounds = await input.boundingBox();
   const cursorBounds = await caret.boundingBox();
