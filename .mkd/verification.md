@@ -145,6 +145,17 @@
 - npm run check 全部通过：43 项单元测试、32 项开发页 Chromium 测试、4 项生产产物测试，以及严格类型、中文注释、ESLint、构建和 NodeNext 消费检查。npm audit 为 0 vulnerabilities，mkd lint/build/第四阶段目标检查通过。
 - 已查看桌面 dashboard 与 320px 星球详情截图，确认长方体、环图下方数值、图标和星球亮暗面；可通过 npm run dev:example4 进行真实浏览器体验复核。
 
+## SDK 自动验收
+
+- 新增 SDK 产品化、取消通知与宿主滚动回归，目前 58 项单元测试通过，类型／ESLint／中文注释检查通过。
+- 真实 tgz 在独立临时项目安装，六个公开 JS 入口无 DOM 导入、NodeNext 类型消费、字体和许可资产、起步模板生产运行，以及 React 19／Vue 3 生产挂载卸载和 SSR 占位输出通过。测试服务器由进程自建并使用系统分配端口，避免复用其他项目或服务。
+- Chromium 38 项开发示例测试通过；Firefox 最近一次单 worker 完整回归 37 项通过、剪贴板权限专项 1 项跳过。早期多次运行偶发停在空挂载节点，针对单例重复及全量复跑通过，稳定性观察项保留。
+- SDK 浏览器专项 Chromium／Firefox 各 6 项通过；Chromium 强制 Trusted Types 时发现 Markdown 字符串 innerHTML 不兼容，已改用 DOMPurify DocumentFragment 并通过复验。
+- Firefox 发现超高编辑器被布局观察器拉向底部的问题，已保留部分可见面板阅读位置并加入单元回归；接近底部跟随同帧用户滚动竞争亦修正并覆盖。
+- 批量 5000 个组件保留 500 条记录、销毁累计释放 5000 个组件，宿主 SDK 节点归零。最近同步输出样本 Chromium 26.9ms、Firefox 34ms，测量范围和性能边界见 docs/acceptance.md。
+- WebKit fallback 构建缺 libicu74 和兼容 libxml2，启动前受阻；未修改系统库。CI／发布检查配置三引擎 --with-deps 安装、新专项及真实包检查，提交后的远端结果待查看。
+- GitHub 原提交 eba531e 的既有 CI 成功。仓库元数据及发布说明已更新；人工输入法、软键盘、读屏和视觉检查步骤见 docs/acceptance.md；npm 版本仍 0.1.0，发布等待批准。
+
 ## 审查及边界
 
 独立审查指出的换行光标插入断点与 NodeNext 声明扩展名问题已经修正，并补充对应测试。中文输入法边界通过合成组合事件验证；各操作系统真实候选窗口体验仍可手动复核。当前自动化浏览器覆盖 Chromium。

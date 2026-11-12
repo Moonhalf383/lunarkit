@@ -3,6 +3,7 @@
 > crate::third-example::service_example
 > crate::fourth-example::merchant_example
 > crate::sdk-distribution::release_preparation
+> crate::sdk-acceptance::automated_acceptance
 
 ---
 
@@ -40,8 +41,14 @@
 完成轻量化、宿主集成与 npm 发布准备；发布需另行确认。
 - 按 sdk-distribution.mf 交付 API、可选资产、文档和发布配置，运行现有自动化回归。
 
-# start
+# acceptance_stage
 > sdk_stage
+> automated_acceptance
+交付自动验收证据和聚焦的人工验收清单。
+- 自动部分按 sdk-acceptance.mf 执行，真实设备及发布授权待维护者确认。
+
+# start
+> acceptance_stage
 这是一个前端开发套件的完整愿景，覆盖多个交付阶段。
 - 极简信息架构：单流式（Stream-based）视图，所有交互结果沿垂直时间线追加，杜绝多级弹窗、抽屉和嵌套卡片。
 - 输入驱动核心：提供固定或悬浮的统一输入行（Prompt），自带自动聚焦、光标闪烁与回车提交事件。
@@ -61,3 +68,4 @@
 > third_stage
 > fourth_stage
 > sdk_stage
+> acceptance_stage
