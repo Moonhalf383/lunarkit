@@ -36,6 +36,6 @@ The world contains ten planets, ten goods, twenty items, and thirty events. A ne
 
 `npm run build` builds the SDK and all four examples. `npm run build:lib` builds only the package. Output lives under `dist/`; example applications are separate from the published library. `npm run preview:example2`, `preview:example3`, and `preview:example4` serve their production builds.
 
-`npm run check` runs type checking, lint, unit tests, builds, public declaration consumption, and the existing development and production Chromium suites. Install Chromium with `npx playwright install chromium` first. Further platform and package-install checks are described in [compatibility](compatibility.md) and [release preparation](releasing.md).
+`npm run check` runs type checking, lint, unit tests, builds, public declaration consumption, development suites in Chromium, Firefox, and WebKit, and production Chromium tests. Install the browsers and system dependencies with `npx playwright install --with-deps chromium firefox webkit` first. `npm run test:acceptance` checks SDK integration across the three engines; `npm run test:package` builds and installs a real package in a temporary project, then checks the starter and framework integrations. See [compatibility](compatibility.md) for runtime requirements and coverage.
 
-The [starter template](../templates/starter/README.md) provides a smaller starting point for a new site. API behavior is documented in the [reference](api.md), and implementation requirements are maintained under `.mkd/`.
+The [starter template](../templates/starter/README.md) provides a smaller starting point for a new site. API behavior is documented in the [reference](api.md).

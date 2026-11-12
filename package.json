@@ -15,7 +15,10 @@
     "THIRD_PARTY_LICENSES",
     "LICENSE",
     "CHANGELOG.md",
-    "docs",
+    "docs/api.md",
+    "docs/examples.md",
+    "docs/compatibility.md",
+    "docs/assets/lunarkit.png",
     "templates"
   ],
   "main": "./dist/index.js",
@@ -113,6 +116,6 @@
   ],
   "publishConfig": {
     "access": "public",
-    "tag": "next"
+    "tag": "latest"
   }
 }
